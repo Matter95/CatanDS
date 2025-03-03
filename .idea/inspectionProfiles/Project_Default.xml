@@ -1,0 +1,29 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="Eslint" enabled="true" level="WARNING" enabled_by_default="true" />
+    <inspection_tool class="PyPep8NamingInspection" enabled="true" level="WEAK WARNING" enabled_by_default="true">
+      <option name="ignoredErrors">
+        <list>
+          <option value="N801" />
+        </list>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="PyUnresolvedReferencesInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredIdentifiers">
+        <list>
+          <option value="boralus.vorstudie.filters.ChoiceFilter" />
+          <option value="boralus.vorstudie.filters.django_filters" />
+          <option value="django_filters" />
+          <option value="boralus.vorstudie.filters.MultipleChoiceFilter" />
+          <option value="boralus.archiv.services.Raumnutzungsmatch" />
+          <option value="boralus.projekt.models.taggit" />
+          <option value="boralus.projekt.models.Projekt.*" />
+          <option value="boralus.projekt.models.Gebaeude.*" />
+          <option value="boralus.archiv.models.KennzahlenKosten.*" />
+          <option value="boralus.projekt.models.Raum.*" />
+        </list>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>
