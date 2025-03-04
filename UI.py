@@ -1,38 +1,18 @@
 from __future__ import annotations
-from hexalattice.hexalattice import *
-import random
 
 import math
 from dataclasses import dataclass
 from typing import List
 from typing import Tuple
-from gloabl_definitions import Map, MapTile, left_most_xy_coords
+from gloabl_definitions import Map, MapTile, left_most_xy_coords, Map_alt, screen_width, screen_height
 import pygame
 import pygame.gfxdraw
-
-def print_map():
-    hex_centers, _ = create_hex_grid(
-        nx=7,
-        ny=7,
-        do_plot=False
-    )
-
-    x_hex_coords = hex_centers[:, 0]
-    y_hex_coords = hex_centers[:, 1]
-
-    plot_single_lattice_custom_colors(x_hex_coords, y_hex_coords,
-                                          face_color="beige",
-                                          edge_color="beige",
-                                          min_diam=1,
-                                          plotting_gap=0,
-                                          rotate_deg=0)
-    plt.show()
-
 
 """
 Taken and modified from
 https://github.com/rbaltrusch/pygame_examples/blob/master/code/hexagonal_tiles/main.py
 """
+
 @dataclass
 class HexagonTile:
     """Hexagon class"""
@@ -102,7 +82,6 @@ class HexagonTile:
                 size = 25
                 screen.blit(imp, (x - size/2, y - size/2))
 
-
     @property
     def centre(self) -> Tuple[float, float]:
         """Centre of the hexagon"""
@@ -114,7 +93,6 @@ class HexagonTile:
         """Horizontal length of the hexagon"""
         # https://en.wikipedia.org/wiki/Hexagon#Parameters
         return self.radius * math.cos(math.radians(30))
-
 
 
 def create_hexagon(position, colour, number, radius=100) -> HexagonTile:
@@ -164,7 +142,7 @@ def init_hexagons(num_x=6, num_y=7) -> List[HexagonTile]:
         else:
             return (69, 139, 209)
 
-    leftmost_hexagon = create_hexagon(left_most_xy_coords, colour_map(Map[0]), Map[0].number)
+    leftmost_hexagon = create_hexagon(left_most_xy_coords, colour_map(Map_alt[0]), Map_alt[0].number)
     hexagons = [leftmost_hexagon]
     j = 1
 
@@ -173,7 +151,7 @@ def init_hexagons(num_x=6, num_y=7) -> List[HexagonTile]:
             # alternate between bottom left and bottom right vertices of hexagon above
             index = 2 if x % 2 == 1 else 4
             position = leftmost_hexagon.vertices[index]
-            leftmost_hexagon = create_hexagon(position, colour_map(Map[j]), Map[j].number)
+            leftmost_hexagon = create_hexagon(position, colour_map(Map_alt[j]), Map_alt[j].number)
             hexagons.append(leftmost_hexagon)
             j += 1
         # place hexagons to the right of leftmost hexagon, with equal y-values.
@@ -181,26 +159,28 @@ def init_hexagons(num_x=6, num_y=7) -> List[HexagonTile]:
         for i in range(num_x):
             x, y = hexagon.position  # type: ignore
             position = (x + hexagon.minimal_radius * 2, y)
-            hexagon = create_hexagon(position, colour_map(Map[j]), Map[j].number)
+            hexagon = create_hexagon(position, colour_map(Map_alt[j]), Map_alt[j].number)
             hexagons.append(hexagon)
             j += 1
 
     return hexagons
 
+
 def render(screen, hexagons):
     """Renders hexagons on the screen"""
-    screen.fill((255, 229, 153))
+    screen.fill((0, 0, 0))
     for hexagon in hexagons:
         hexagon.render(screen)
 
     pygame.display.flip()
+
 
 def main():
     """Main function"""
 
     info = pygame.display.Info()
     print(info)
-    screen = pygame.display.set_mode((2560, 1440))
+    screen = pygame.display.set_mode((screen_width, screen_height))
     clock = pygame.time.Clock()
     render_map(screen)
     #hexagons = init_hexagons()
@@ -211,10 +191,8 @@ def main():
                 terminated = True
 
         #render(screen, hexagons)
-        render_map(screen)
 
         clock.tick(50)
     pygame.display.quit()
 
-if __name__ == "__main__":
-    main()
+main()
