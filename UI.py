@@ -121,6 +121,29 @@ def create_hexagon(position, colour, number, radius=100) -> HexagonTile:
     """Creates a hexagon tile at the specified position"""
     return HexagonTile(radius=radius, colour=colour, position=position, number=number)
 
+
+def render_map(screen):
+    screen.fill((69, 139, 209))
+    for tile in Map:
+        if tile.resource == "Lumber":
+            img = pygame.image.load("Sprites/Map/hex_lumber.png").convert_alpha()
+        elif tile.resource == "Brick":
+            img = pygame.image.load("Sprites/Map/hex_brick.png").convert_alpha()
+        elif tile.resource == "Wool":
+            img = pygame.image.load("Sprites/Map/hex_wool.png").convert_alpha()
+        elif tile.resource == "Grain":
+            img = pygame.image.load("Sprites/Map/hex_grain.png").convert_alpha()
+        elif tile.resource == "Ore":
+            img = pygame.image.load("Sprites/Map/hex_ore.png").convert_alpha()
+        elif tile.resource == "Desert":
+            img = pygame.image.load("Sprites/Map/hex_desert.png").convert_alpha()
+        else:
+            img = pygame.image.load("Sprites/Map/hex_water.png").convert_alpha()
+        img_rect = img.get_rect(center=tile.xy_coords)
+        screen.blit(img, img_rect.topleft)
+    pygame.display.flip()
+
+
 def init_hexagons(num_x=6, num_y=7) -> List[HexagonTile]:
     """Creates a hexaogonal tile map of size num_x * num_y"""
     # pylint: disable=invalid-name
@@ -166,7 +189,7 @@ def init_hexagons(num_x=6, num_y=7) -> List[HexagonTile]:
 
 def render(screen, hexagons):
     """Renders hexagons on the screen"""
-    screen.fill((0, 0, 0))
+    screen.fill((255, 229, 153))
     for hexagon in hexagons:
         hexagon.render(screen)
 
@@ -174,21 +197,22 @@ def render(screen, hexagons):
 
 def main():
     """Main function"""
-    pygame.init()
-    pygame.font.init()
-    pygame.display.init()
+
     info = pygame.display.Info()
     print(info)
     screen = pygame.display.set_mode((2560, 1440))
     clock = pygame.time.Clock()
-    hexagons = init_hexagons()
+    render_map(screen)
+    #hexagons = init_hexagons()
     terminated = False
     while not terminated:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminated = True
 
-        render(screen, hexagons)
+        #render(screen, hexagons)
+        render_map(screen)
+
         clock.tick(50)
     pygame.display.quit()
 
