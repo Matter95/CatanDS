@@ -1,20 +1,24 @@
+from __future__ import annotations
 import math
-from typing import Tuple
+import os
+from dataclasses import dataclass
+from typing import Tuple, List
 import pygame
 
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+REMOTE_DIR = os.path.join(ROOT_DIR, "Remote")
 
-left_most_xy_coords = (800, 150)
 
 pygame.init()
 pygame.font.init()
 pygame.display.init()
-screen_width, screen_height = pygame.display.get_desktop_sizes()[0]
-middle_xy_coordinates: Tuple[float, float] = (screen_width / 2, screen_height / 2)
-middle_arc_coordinates: Tuple[int, ...] = (1, 1, 2)
-
+_screen_width, _screen_height = pygame.display.get_desktop_sizes()[0]
 _hexagon_radius = 100
+_hex_num_width = 6
+_hex_num_height = 7
 _hexagon_height = 2 * _hexagon_radius
 _hexagon_width = math.sqrt(3) * _hexagon_radius
+_left_most_xy_coords = (((_screen_width - _hex_num_width * _hexagon_width) / 2) + _hex_num_width, (_screen_height - _hex_num_height * _hexagon_height) / 2)
 
 _resource_card_type: Tuple[str, ...] = ("Lumber", "Brick", "Wool", "Grain", "Ore")
 _progress_card_type: Tuple[str, ...] = ("Monopoly", "Year-of-Plenty", "Road-Building")
@@ -35,103 +39,151 @@ _development_card_pool: dict[str, int] = {
     "Victory-Point": 5,
 }
 
+@dataclass
+class HexagonTile:
+    """Hexagon class"""
+    id: int
+    radius: float
+    position: Tuple[float, float]
+    colour: Tuple[int, ...]
+    number: int
+    resource: str
+
+    def __post_init__(self):
+        self.vertices = self.compute_vertices()
+
+    def __hash__(self):
+        return hash(self.id)
+
+    def compute_vertices(self) -> List[Tuple[float, float]]:
+        """Returns a list of the hexagon's vertices as x, y tuples"""
+        # pylint: disable=invalid-name
+        x, y = self.position
+        half_radius = self.radius / 2
+        minimal_radius = self.minimal_radius
+        return [
+            (round(x, 1), round(y, 1)),
+            (round(x - minimal_radius, 1), round(y + half_radius, 1)),
+            (round(x - minimal_radius, 1), round(y + 3 * half_radius, 1)),
+            (round(x, 1), round(y + 2 * self.radius, 1)),
+            (round(x + minimal_radius, 1), round(y + 3 * half_radius, 1)),
+            (round(x + minimal_radius, 1), round(y + half_radius, 1)),
+        ]
+
+    def compute_neighbours(self, hexagons: List[HexagonTile]) -> List[HexagonTile]:
+        """Returns hexagons whose centres are two minimal radiuses away from self.centre"""
+        # could cache results for performance
+        return [hexagon for hexagon in hexagons if self.is_neighbour(hexagon)]
+
+    def collide_with_point(self, point: Tuple[float, float]) -> bool:
+        """Returns True if distance from centre to point is less than horizontal_length"""
+        return math.dist(point, self.centre) < self.minimal_radius
+
+    def is_neighbour(self, hexagon: HexagonTile) -> bool:
+        """Returns True if hexagon centre is approximately
+        2 minimal radiuses away from own centre
+        """
+        distance = math.dist(hexagon.centre, self.centre)
+        return math.isclose(distance, 2 * self.minimal_radius, rel_tol=0.05)
+
+    def render(self, screen) -> None:
+        """Renders the hexagon on the screen"""
+        pygame.draw.polygon(screen, self.colour, self.vertices)
+        pygame.gfxdraw.aapolygon(screen, self.vertices, (255, 229, 153))
+        if self.colour != (69, 139, 209) and self.colour != (255, 229, 153):
+            number = pygame.image.load(f"Sprites/Map/number_{self.number}.png").convert_alpha()
+            img_rect = number.get_rect(center=self.centre)
+            screen.blit(number, img_rect.topleft)
+
+    @property
+    def centre(self) -> Tuple[float, float]:
+        """Centre of the hexagon"""
+        x, y = self.position  # pylint: disable=invalid-name
+        return (x, y + self.radius)
+
+    @property
+    def minimal_radius(self) -> float:
+        """Horizontal length of the hexagon"""
+        # https://en.wikipedia.org/wiki/Hexagon#Parameters
+        return self.radius * math.cos(math.radians(30))
+
 class MapTile:
-    designation: str
     arc_coords: [int]
     resource: str
     number: int
-    xy_coords: [float, float]
 
-    def __init__(self, designation: str, arr: int, row: int, col: int, resource: str, number: int):
-        self.designation = designation
+    def __init__(self, arr: int, row: int, col: int, resource: str, number: int):
         self.arc_coords = [arr, row, col]
         self.resource = resource
         self.number = number
 
-        x, y = middle_xy_coordinates
-        # is leftmost hexagon
-        if self.designation == "t112":
-            self.xy_coords: [int, int] = (x, y)
-        else:
-            arr, row, col = self.arc_coords
-            j = 1
-            middle_arr, middle_row, middle_col = middle_arc_coordinates
-            if middle_arr != arr:
-                x += _hexagon_width / 2
-                y += 0.75 * _hexagon_height
-
-            if middle_row > row:
-                row_diff = middle_row - row
-                y -= row_diff * 1.5 * _hexagon_height
-            elif middle_row < row:
-                row_diff = row - middle_row
-                y += row_diff * 1.5 * _hexagon_height
-
-            if middle_col > col:
-                col_diff = middle_col - col
-                x -= col_diff * _hexagon_width
-            elif middle_col < col:
-                col_diff = col - middle_col
-                x += col_diff * _hexagon_width
-
-            self.xy_coords: [int, int] = (x, y)
+_wharf_types: Tuple[str, ...] = ("3:1",) + _resource_card_type
 
 
 Map: [MapTile] = [
-
     # Top Row Water
-    MapTile("t0m10", 0, -1, 0, "Water", -1),
-    MapTile("t0m11", 0, -1, 1, "Water", -1),
-    MapTile("t0m12", 0, -1, 2, "Water", -1),
-    MapTile("t0m13", 0, -1, 3, "Water", -1),
+    MapTile(0, -1, -1, "Water", -1),
+    MapTile(0, -1, 0, "Water", -1),
+    MapTile(0, -1, 1, "Water", -1),
+    MapTile(0, -1, 2, "Water", -1),
+    MapTile(0, -1, 3, "Water", -1),
+    MapTile(0, -1, 4, "Water", -1),
+    MapTile(0, -1, 5, "Water", -1),
 
     # First Line of Island
-    MapTile("t100", 1, 0, 0, "Water", -1),
-    MapTile("t101", 1, 0, 1, "Ore", 10),
-    MapTile("t102", 1, 0, 2, "Wool", 2),
-    MapTile("t103", 1, 0, 3, "Lumber", 9),
-    MapTile("t104", 1, 0, 4, "Water", -1),
+    MapTile(1, 0, -1, "Water", -1),
+    MapTile(1, 0, 0, "Water", -1),
+    MapTile(1, 0, 1, "Ore", 10),
+    MapTile(1, 0, 2, "Wool", 2),
+    MapTile(1, 0, 3, "Lumber", 9),
+    MapTile(1, 0, 4, "Water", -1),
+    MapTile(1, 0, 5, "Water", -1),
 
     # Second Row of Island
-    MapTile("t00m1", 0, 0, -1, "Water", -1),
-    MapTile("t000", 0, 0, 0, "Grain", 12),
-    MapTile("t001", 0, 0, 1, "Brick", 6),
-    MapTile("t002", 0, 0, 2, "Wool", 4),
-    MapTile("t003", 0, 0, 3, "Brick", 10),
-    MapTile("t004", 0, 0, 4, "Water", -1),
+    MapTile(0, 0, -1, "Water", -1),
+    MapTile(0, 0, 0, "Grain", 12),
+    MapTile(0, 0, 1, "Brick", 6),
+    MapTile(0, 0, 2, "Wool", 4),
+    MapTile(0, 0, 3, "Brick", 10),
+    MapTile(0, 0, 4, "Water", -1),
+    MapTile(0, 0, 5, "Water", -1),
 
     # Third Row of Island
-    MapTile("t11m1", 1, 1, -1, "Water", -1),
-    MapTile("t110", 1, 1, 0, "Grain", 9),
-    MapTile("t111", 1, 1, 1, "Lumber", 11),
-    MapTile("t112", 1, 1, 2, "Desert", -1),
-    MapTile("t113", 1, 1, 3, "Lumber", 3),
-    MapTile("t114", 1, 1, 4, "Ore", 8),
-    MapTile("t115", 1, 1, 5, "Water", -1),
+    MapTile(1, 1, -1, "Water", -1),
+    MapTile(1, 1, 0, "Grain", 9),
+    MapTile(1, 1, 1, "Lumber", 11),
+    MapTile(1, 1, 2, "Desert", -1),
+    MapTile(1, 1, 3, "Lumber", 3),
+    MapTile(1, 1, 4, "Ore", 8),
+    MapTile(1, 1, 5, "Water", -1),
 
     # Fourth Row of Island
-    MapTile("t01m1", 0, 1, -1, "Water", -1),
-    MapTile("t010", 0, 1, 0, "Lumber", 8),
-    MapTile("t011", 0, 1, 1, "Ore", 3),
-    MapTile("t012", 0, 1, 2, "Grain", 4),
-    MapTile("t013", 0, 1, 3, "Wool", 5),
-    MapTile("t014", 0, 1, 4, "Water", -1),
+    MapTile(0, 1, -1, "Water", -1),
+    MapTile(0, 1, 0, "Lumber", 8),
+    MapTile(0, 1, 1, "Ore", 3),
+    MapTile(0, 1, 2, "Grain", 4),
+    MapTile(0, 1, 3, "Wool", 5),
+    MapTile(0, 1, 4, "Water", -1),
+    MapTile(0, 1, 5, "Water", -1),
 
     # Fifth Row of Island
-    MapTile("t120", 1, 2, 0, "Water", -1),
-    MapTile("t121", 1, 2, 1, "Brick", 5),
-    MapTile("t122", 1, 2, 2, "Grain", 6),
-    MapTile("t123", 1, 2, 3, "Wool", 11),
-    MapTile("t124", 1, 2, 4, "Water", -1),
+    MapTile(1, 2, -1, "Water", -1),
+    MapTile(1, 2, 0, "Water", -1),
+    MapTile(1, 2, 1, "Brick", 5),
+    MapTile(1, 2, 2, "Grain", 6),
+    MapTile(1, 2, 3, "Wool", 11),
+    MapTile(1, 2, 4, "Water", -1),
+    MapTile(1, 2, 5, "Water", -1),
 
-    # Bottom Row of Island
-    MapTile("t020", 0, 2, 0, "Water", -1),
-    MapTile("t021", 0, 2, 1, "Water", -1),
-    MapTile("t022", 0, 2, 2, "Water", -1),
-    MapTile("t023", 0, 2, 3, "Water", -1),
+    # Water Row of Island
+    MapTile(0, 2, -1, "Water", -1),
+    MapTile(0, 2, 0, "Water", -1),
+    MapTile(0, 2, 1, "Water", -1),
+    MapTile(0, 2, 2, "Water", -1),
+    MapTile(0, 2, 3, "Water", -1),
+    MapTile(0, 2, 4, "Water", -1),
+    MapTile(0, 2, 5, "Water", -1)
 ]
-
-_wharf_types: Tuple[str, ...] = ("3:1",) + _resource_card_type
 
 def get_map_tile(c: str) -> MapTile | None:
     for tile in Map:
@@ -148,15 +200,15 @@ class Wharf:
         self.resource = wharf_type
 
 Wharfs: [Wharf] = [
-    Wharf(get_map_tile("t0m10"), get_map_tile("t101"), "3:1"),
-    Wharf(get_map_tile("t0m12"), get_map_tile("t102"), "Grain"),
-    Wharf(get_map_tile("t104"), get_map_tile("t003"), "Ore"),
-    Wharf(get_map_tile("t00m1"), get_map_tile("t000"), "Lumber"),
-    Wharf(get_map_tile("t114"), get_map_tile("t115"), "3:1"),
-    Wharf(get_map_tile("t01m1"), get_map_tile("t010"), "Brick"),
-    Wharf(get_map_tile("t013"), get_map_tile("t124"), "Wool"),
-    Wharf(get_map_tile("t121"), get_map_tile("t020"), "3:1"),
-    Wharf(get_map_tile("t122"), get_map_tile("t022"), "3:1"),
+    Wharf(Map[1], Map[9], "3:1"),
+    Wharf(Map[3], Map[10], "Grain"),
+    Wharf(Map[12], Map[18], "Ore"),
+    Wharf(Map[14], Map[15], "Lumber"),
+    Wharf(Map[26], Map[27], "3:1"),
+    Wharf(Map[28], Map[29], "Brick"),
+    Wharf(Map[32], Map[40], "Wool"),
+    Wharf(Map[37], Map[43], "3:1"),
+    Wharf(Map[38], Map[45], "3:1"),
 ]
 
 _settlement_type: Tuple[str, ...] = ("Village", "City")
@@ -170,14 +222,12 @@ player_building_pool: dict[str, int] = {
 }
 
 class Settlement_point:
-    designation: str
-    coords: Tuple[MapTile, ...]
-    xy_coords: Tuple[float, float]
+    coords: set[HexagonTile]
     owner: str
     settlement_type: str
+    xy_coords: (float, float)
 
-    def __init__(self, designation: str, coords: Tuple[MapTile, ...], owner: str, settlement_type: str):
-        self.designation = designation
+    def __init__(self, coords: set[HexagonTile], owner: str, settlement_type: str):
         self.coords = coords
         self.owner = owner
         if settlement_type in _settlement_type:
@@ -185,85 +235,90 @@ class Settlement_point:
         else:
             self.settlement_type = "bot"
 
+        # vertex that is member of all three tiles is the correct point
+        tiles = tuple(coords)
+        tile_one = tiles[0]
+        tile_two = tiles[1]
+        tile_three = tiles[2]
+
+        for vertex in tile_one.vertices:
+            if vertex in tile_two.vertices and vertex in tile_three.vertices:
+                self.xy_coords = vertex
+
+    def render(self, screen) -> None:
+        """Renders the hexagon on the screen"""
+
+        if self.owner != "bot":
+            if self.settlement_type == "Village":
+                imp = pygame.image.load(f"Sprites/{self.owner}/Village.png").convert_alpha()
+                img_rect = imp.get_rect(center=self.xy_coords)
+                screen.blit(imp, img_rect.topleft)
+            elif self.settlement_type == "City":
+                imp = pygame.image.load(f"Sprites/{self.owner}/City.png").convert_alpha()
+                img_rect = imp.get_rect(center=self.xy_coords)
+                screen.blit(imp, img_rect.topleft)
+
+    def coords_to_string(self):
+        string = ""
+        for coord in self.coords:
+            string += f"{coord.id}, "
+        return string[:-2]
+
     def __str__(self):
-        return f"{self.designation}, {self.coords}, {self.xy_coords} {self.owner}, {self.settlement_type}"
+        return f"{self.coords_to_string()}, {self.owner}, {self.settlement_type}"
 
 class Road_point:
-    designation: str
-    coords: Tuple[MapTile, MapTile]
-    xy_coords: Tuple[float, float]
+    coords: set[HexagonTile]
     owner: str
+    xy_coords: (float, float)
+    angle: int
 
-    def __init__(self, designation: str, coords: Tuple[MapTile, MapTile], owner: str):
-        self.designation = designation
+    def __init__(self, coords: set[HexagonTile], owner: str):
         self.coords = coords
         self.owner = owner
 
+        # two vertexes are member of both tiles
+        tiles = tuple(coords)
+        tile_one = tiles[0]
+        tile_two = tiles[1]
+        points = []
+
+        for vertex in tile_one.vertices:
+            if vertex in tile_two.vertices:
+                points.append(vertex)
+
+        self.xy_coords = (points[0][0] + points[1][0]) / 2, (points[0][1] + points[1][1]) / 2
+
+
+        x_1, y_1 = points[0]
+        x_2, y_2 = points[1]
+        deg = 0
+        if x_1 < x_2 and y_1 < y_2 or x_1 > x_2 and y_1 > y_2:
+            deg = -60
+        elif x_1 < x_2 and y_1 > y_2 or x_1 > x_2 and y_1 < y_2:
+            deg = 60
+        elif x_1 == x_2:
+            deg = 0
+        elif y_1 == y_2:
+            deg = 90
+
+        self.angle = deg
+
+    def coords_to_string(self):
+        string = ""
+        for coord in self.coords:
+            string += f"{coord.id}, "
+        return string[:-2]
+
     def __str__(self):
-        return f"{self.designation}, {self.coords}, {self.xy_coords} {self.owner}"
+        return f"{self.coords_to_string()}, {self.owner}"
 
+    def render(self, screen) -> None:
+        """Renders the hexagon on the screen"""
 
-Map_alt: [MapTile] = [
-    # Top Row Water
-    MapTile("t0m1m1", 0, -1, -1, "Bottom", -1),
-    MapTile("t0m10", 0, -1, 0, "Bottom", -1),
-    MapTile("t0m11", 0, -1, 1, "Bottom", -1),
-    MapTile("t0m12", 0, -1, 2, "Bottom", -1),
-    MapTile("t0m13", 0, -1, 3, "Bottom", -1),
-    MapTile("t0m14", 0, -1, 4, "Bottom", -1),
-    MapTile("t0m15", 0, -1, 5, "Bottom", -1),
+        if self.owner != "bot":
+            imp = pygame.image.load(f"Sprites/{self.owner}/Road.png").convert_alpha()
+            imp_rot = pygame.transform.rotate(imp, -self.angle)
+            img_rect = imp_rot.get_rect(center=self.xy_coords)
+            screen.blit(imp_rot, img_rect.topleft)
 
-    # First Line of Island
-    MapTile("t10m1", 1, 0, -1, "Bottom", -1),
-    MapTile("t100", 1, 0, 0, "Bottom", -1),
-    MapTile("t101", 1, 0, 1, "Ore", 10),
-    MapTile("t102", 1, 0, 2, "Wool", 2),
-    MapTile("t103", 1, 0, 3, "Lumber", 9),
-    MapTile("t104", 1, 0, 4, "Bottom", -1),
-    MapTile("t105", 1, 0, 5, "Bottom", -1),
-
-    # Second Row of Island
-    MapTile("t00m1", 0, 0, -1, "Bottom", -1),
-    MapTile("t000", 0, 0, 0, "Grain", 12),
-    MapTile("t001", 0, 0, 1, "Brick", 6),
-    MapTile("t002", 0, 0, 2, "Wool", 4),
-    MapTile("t003", 0, 0, 3, "Brick", 10),
-    MapTile("t004", 0, 0, 4, "Bottom", -1),
-    MapTile("t005", 0, 0, 5, "Bottom", -1),
-
-    # Third Row of Island
-    MapTile("t11m1", 1, 1, -1, "Bottom", -1),
-    MapTile("t110", 1, 1, 0, "Grain", 9),
-    MapTile("t111", 1, 1, 1, "Lumber", 11),
-    MapTile("t112", 1, 1, 2, "Desert", -1),
-    MapTile("t113", 1, 1, 3, "Lumber", 3),
-    MapTile("t114", 1, 1, 4, "Ore", 8),
-    MapTile("t115", 1, 1, 5, "Bottom", -1),
-
-    # Fourth Row of Island
-    MapTile("t01m1", 0, 1, -1, "Bottom", -1),
-    MapTile("t010", 0, 1, 0, "Lumber", 8),
-    MapTile("t011", 0, 1, 1, "Ore", 3),
-    MapTile("t012", 0, 1, 2, "Grain", 4),
-    MapTile("t013", 0, 1, 3, "Wool", 5),
-    MapTile("t014", 0, 1, 4, "Bottom", -1),
-    MapTile("t015", 0, 1, 5, "Bottom", -1),
-
-    # Fifth Row of Island
-    MapTile("t12m1", 1, 2, -1, "Bottom", -1),
-    MapTile("t120", 1, 2, 0, "Bottom", -1),
-    MapTile("t121", 1, 2, 1, "Brick", 5),
-    MapTile("t122", 1, 2, 2, "Grain", 6),
-    MapTile("t123", 1, 2, 3, "Wool", 11),
-    MapTile("t124", 1, 2, 4, "Bottom", -1),
-    MapTile("t125", 1, 2, 5, "Bottom", -1),
-
-    # Bottom Row of Island
-    MapTile("t02m1", 0, 2, -1, "Bottom", -1),
-    MapTile("t020", 0, 2, 0, "Bottom", -1),
-    MapTile("t021", 0, 2, 1, "Bottom", -1),
-    MapTile("t022", 0, 2, 2, "Bottom", -1),
-    MapTile("t023", 0, 2, 3, "Bottom", -1),
-    MapTile("t024", 0, 2, 4, "Bottom", -1),
-MapTile("t025", 0, 2, 5, "Bottom", -1)
-]

@@ -107,8 +107,8 @@ def get_repo_author_gitdir(git_dir: str):
     :param git_dir: the git directory of a repo
     :return: name of the author
     """
-    slash_ind = git_dir[0:len(git_dir) - 6].find("Blog_Sites_")
-    author = git_dir[slash_ind + len("Blog_Sites_"):len(git_dir) - 5]
+    slash_ind = git_dir[0:len(git_dir) - 6].find("Catan_")
+    author = git_dir[slash_ind + len("Catan_"):len(git_dir) - 5]
     return author
 
 
