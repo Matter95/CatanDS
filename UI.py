@@ -1,7 +1,9 @@
+import os
 from typing import List
 from typing import Tuple
 
 import git
+from git import Repo, NoSuchPathError
 
 from gloabl_definitions import (
     Map,
@@ -11,13 +13,15 @@ from gloabl_definitions import (
     _screen_height,
     _hexagon_radius,
     _hex_num_width,
-    _hex_num_height, HexagonTile, Road_point, Settlement_point, ROOT_DIR, REMOTE_DIR
+    _hex_num_height, HexagonTile, Road_point, Settlement_point, ROOT_DIR, REMOTE_DIR, _player_colour
 )
 import pygame
 import pygame.gfxdraw
 
 from initializing import initialize_game_state
 from repo_utils import init_repo, get_repo_author_gitdir
+from utils import get_initial_phase, get_player_buildings, get_player_hand, get_settlement_point, get_road_point, \
+    get_all_settlement_points, get_all_road_points, get_all_available_road_points, get_active_player
 
 """
 Taken and modified from
@@ -112,10 +116,17 @@ def init_road_points(hexagons: [HexagonTile]) -> List[Road_point]:
                         road_points.append(Road_point({tile_one, tile_two}, "bot"))
     return road_points
 
-def render(screen, hexagons):
+def render_static(screen, hexagons):
     """Renders hexagons on the screen"""
     for hexagon in hexagons:
         hexagon.render(screen)
+    pygame.display.flip()
+
+def render_transparent(screen, settlement_points: [Settlement_point], road_points: [Road_point], player_nr):
+    for settlement_point in settlement_points:
+        settlement_point.render(screen)
+    for road_point in road_points:
+        road_point.render_transparent(screen, _player_colour[player_nr])
     pygame.display.flip()
 
 def render_game_pieces(screen, settlement_points: [Settlement_point], road_points: [Road_point]):
@@ -142,33 +153,47 @@ def create_git_dirs() -> [git.repo]:
 def main():
     """Main function"""
 
-    repos = create_git_dirs()
 
-    background = pygame.display.set_mode((_screen_width, _screen_height))
-    map = pygame.display.set_mode((_screen_width, _screen_height))
-    pieces = pygame.display.set_mode((_screen_width, _screen_height))
-    cards = pygame.display.set_mode((_screen_width, _screen_height))
-
-    background.fill((69, 139, 209))
+    game = pygame.display.set_mode((_screen_width, _screen_height))
+    game.fill((69, 139, 209))
 
     clock = pygame.time.Clock()
     hexagons = init_hexagons()
-    settlement_points = init_settlement_points(hexagons)
-    road_points = init_road_points(hexagons)
-    render(map, hexagons)
 
-    for repo in repos:
-        initialize_game_state(repo, settlement_points, road_points)
+    render_static(game, hexagons)
+
+    # check if there is already a game around
+    try:
+        repo = Repo(os.path.join(ROOT_DIR, "Catan_Alice"))
+        init_state = get_initial_phase(repo)
+    except NoSuchPathError:
+        init_state = None
+
+    # only initialize if no init state around
+    if init_state is None:
+        settlement_points = init_settlement_points(hexagons)
+        road_points = init_road_points(hexagons)
+        repos = create_git_dirs()
+        for repo in repos:
+            initialize_game_state(repo, settlement_points, road_points)
+        repo = repos[0]
+
+    active_player = get_active_player(repo)
+    settlement_points = get_all_settlement_points(repo, hexagons)
+    road_points = get_all_road_points(repo, hexagons)
+    transparents = get_all_available_road_points(repo, road_points, settlement_points, 2)
+    render_transparent(game, [], transparents, 2)
 
     terminated = False
     while not terminated:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminated = True
-        render(pieces, settlement_points)
-        render(pieces, road_points)
 
+        #render_transparent(game, settlement_points, road_points)
+        render_game_pieces(game, settlement_points, [])
         clock.tick(50)
+
     pygame.display.quit()
 
 main()

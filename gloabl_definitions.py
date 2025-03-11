@@ -12,6 +12,7 @@ REMOTE_DIR = os.path.join(ROOT_DIR, "Remote")
 pygame.init()
 pygame.font.init()
 pygame.display.init()
+_player_colour = ["Red", "Blue", "Green", "Orange"]
 _screen_width, _screen_height = pygame.display.get_desktop_sizes()[0]
 _hexagon_radius = 100
 _hex_num_width = 6
@@ -24,20 +25,10 @@ _resource_card_type: Tuple[str, ...] = ("Lumber", "Brick", "Wool", "Grain", "Ore
 _progress_card_type: Tuple[str, ...] = ("Monopoly", "Year-of-Plenty", "Road-Building")
 _development_card_type: Tuple[str, ...] = _progress_card_type + ("Knight", "Victory-Point")
 
-_resource_card_pool: dict[str, int] = {
-    "Lumber": 19,
-    "Brick": 19,
-    "Wool": 19,
-    "Grain": 19,
-    "Ore": 19,
-}
-_development_card_pool: dict[str, int] = {
-    "Monopoly": 2,
-    "Year-of-Plenty": 2,
-    "Road-Building": 2,
-    "Knight": 14,
-    "Victory-Point": 5,
-}
+_resource_card_pool: Tuple[int, ...] = (19, 19, 19, 19, 19)
+_resource_card_pool_str: str = "19,19,19,19,19"
+_development_card_pool: Tuple[int, ...] = (2, 2, 2, 14, 5)
+_development_card_pool_str: str = "2,2,2,14,5"
 
 @dataclass
 class HexagonTile:
@@ -215,11 +206,8 @@ _settlement_type: Tuple[str, ...] = ("Village", "City")
 _building_type: Tuple[str, ...] = ("Road",) + _settlement_type
 _purchasable_item_type: Tuple[str, ...] = ("Development Card",) + _building_type
 
-player_building_pool: dict[str, int] = {
-    "Road": 15,
-    "Village": 5,
-    "City": 4,
-}
+_player_building_pool: Tuple[int, ...] = (15, 5, 4)
+_player_building_pool_str: str = "15,5,4"
 
 class Settlement_point:
     coords: set[HexagonTile]
@@ -261,11 +249,11 @@ class Settlement_point:
     def coords_to_string(self):
         string = ""
         for coord in self.coords:
-            string += f"{coord.id}, "
-        return string[:-2]
+            string += f"{coord.id},"
+        return string[:-1]
 
     def __str__(self):
-        return f"{self.coords_to_string()}, {self.owner}, {self.settlement_type}"
+        return f"{self.coords_to_string()},{self.owner},{self.settlement_type}"
 
 class Road_point:
     coords: set[HexagonTile]
@@ -307,18 +295,23 @@ class Road_point:
     def coords_to_string(self):
         string = ""
         for coord in self.coords:
-            string += f"{coord.id}, "
-        return string[:-2]
+            string += f"{coord.id},"
+        return string[:-1]
 
     def __str__(self):
-        return f"{self.coords_to_string()}, {self.owner}"
+        return f"{self.coords_to_string()},{self.owner}"
 
     def render(self, screen) -> None:
         """Renders the hexagon on the screen"""
 
         if self.owner != "bot":
-            imp = pygame.image.load(f"Sprites/{self.owner}/Road.png").convert_alpha()
-            imp_rot = pygame.transform.rotate(imp, -self.angle)
-            img_rect = imp_rot.get_rect(center=self.xy_coords)
-            screen.blit(imp_rot, img_rect.topleft)
+            img = pygame.image.load(f"Sprites/{self.owner}/Road.png").convert_alpha()
+            img_rot = pygame.transform.rotate(img, -self.angle)
+            img_rect = img_rot.get_rect(center=self.xy_coords)
+            screen.blit(img_rot, img_rect.topleft)
 
+    def render_transparent(self, screen, player_colour: str):
+        img = pygame.image.load(f"Sprites/{player_colour}/Road_t.png").convert_alpha()
+        img_rot = pygame.transform.rotate(img, -self.angle)
+        img_rect = img_rot.get_rect(center=self.xy_coords)
+        screen.blit(img_rot, img_rect.topleft)
