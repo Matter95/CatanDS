@@ -1,9 +1,8 @@
 import os
-from typing import List
 
 import git
-from gloabl_definitions import _resource_card_pool, _development_card_pool, Settlement_point, Road_point, \
-    _player_building_pool, _player_building_pool_str, _development_card_pool_str, _resource_card_pool_str
+from gloabl_definitions import _player_building_pool_str, _development_card_pool_str, _resource_card_pool_str, \
+    Settlement_point, Road_point
 from repo_utils import get_repo_author_gitdir
 from utils import create_folder_structure
 
@@ -111,7 +110,7 @@ def initialize_game_state(
 
     return comment_id
 
-def init_phase_one(repo: git.Repo) -> git.Commit:
+def init_phase_one(repo: git.Repo, ) -> git.Commit:
     """
     Initialization phase one. Each player has to place a village and a road.
 
@@ -123,9 +122,6 @@ def init_phase_one(repo: git.Repo) -> git.Commit:
     -------
     git.Commit
     """
-
-
-
     author_name = get_repo_author_gitdir(repo.git_dir)
 
 

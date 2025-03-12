@@ -4,7 +4,9 @@ from typing import Tuple, List
 import git
 from git import Git
 
-from gloabl_definitions import MapTile, Settlement_point, Map, HexagonTile, Road_point, _player_colour
+from gloabl_definitions import MapTile, Settlement_point, Map, HexagonTile, Road_point, _player_colour, ROOT_DIR, \
+    REMOTE_DIR
+from repo_utils import init_repo, get_repo_author_gitdir
 
 
 def create_folder_structure(repo: git.Repo, n_players: int):
@@ -109,30 +111,55 @@ def get_player_unveiled_cards(repo: git.Repo, player_nr: int):
 def update_player_unveiled_cards(repo: git.Repo, player_nr: int, update_diff: Tuple[int, ...]):
     pass
 
-def get_player_buildings(repo: git.Repo, building_type: str, player_nr: int) -> int | None:
+def get_player_buildings(repo: git.Repo, player_nr: int) -> [int]:
     path = os.path.join(repo.working_dir, "state", "game", "player_buildings", f"player_{player_nr}")
-
+    buildings: [int] = []
     with open(path, "r") as file:
         line = file.readline()
         line = line.split(",")
-        if building_type == "road":
-            line = line[0]
-        elif building_type == "village":
-            line = line[1]
-        elif building_type == "city":
-            line = line[2]
-        else:
-            return None
+        for element in line:
+            buildings.append(element)
 
-    return int(line)
+    return buildings
 
-def update_player_buildings(repo: git.Repo, player_nr: int,  building_type: str, diff: int):
-    pass
+def get_player_buildings_type(repo: git.Repo, building_type: str, player_nr: int) -> int | None:
+    buildings = get_player_buildings(repo, player_nr)
+    if building_type == "road":
+        building = buildings[0]
+    elif building_type == "village":
+        building = buildings[1]
+    elif building_type == "city":
+        building = buildings[2]
+    else:
+        print("illegal building type")
+        return None
+
+    return building
+
+def update_player_buildings(repo: git.Repo, player_nr: int, update_diff: [int]):
+    path = os.path.join(repo.working_dir, "state", "game", "player_buildings", f"player_{player_nr}")
+
+    old_val = get_player_buildings(repo, player_nr)
+
+    for val in update_diff:
+        if old_val + val < 0:
+            print(f"illegal update: not enough cards. Available {old_val}, add {val}")
+            return
+
+    if update_diff != [0, 0, 0]:
+        new_val = []
+        for i, val in enumerate(update_diff):
+            if old_val[i] + val < 0:
+                print(f"illegal update: not enough cards. Available {old_val[i]}, decrease {val}")
+                return
+            new_val.append(old_val[i] + val)
+        with open(path, "w") as file:
+            file.write(f"{new_val}".replace("[", "").replace("]", "").replace(" ", ""))
 
 # bank functions
 def get_bank_resources(repo: git.Repo):
     path = os.path.join(repo.working_dir, "state", "game", "bank", "resource_cards")
-    resource_cards = [0,0,0,0,0]
+    resource_cards = [0, 0, 0, 0, 0]
     with open(path, "r") as file:
         line = file.readline()
         line = line.split(",")
@@ -142,7 +169,24 @@ def get_bank_resources(repo: git.Repo):
     return resource_cards
 
 def update_bank_resources(repo: git.Repo, update_diff: Tuple[int, ...]):
-    pass
+    if len(update_diff) != 5:
+        print(f"illegal update length: {len(update_diff)} not 5")
+        return
+
+    path = os.path.join(repo.working_dir, "state", "game", "bank", "resource_cards")
+    # load old value
+    old_val = get_bank_development_cards(repo)
+
+    if update_diff != [0, 0, 0, 0, 0]:
+        new_val = []
+        for i, val in enumerate(update_diff):
+            if old_val[i] + val < 0:
+                print(f"illegal update: not enough cards. Available {old_val[i]}, decrease {val}")
+                return
+            new_val.append(old_val[i] + val)
+        with open(path, "w") as file:
+            file.write(f"{new_val}".replace("[", "").replace("]", "").replace(" ", ""))
+
 
 def get_bank_development_cards(repo: git.Repo):
     path = os.path.join(repo.working_dir, "state", "game", "bank", "development_cards")
@@ -155,8 +199,30 @@ def get_bank_development_cards(repo: git.Repo):
 
     return development_cards
 
-def update_bank_development_cards(repo: git.Repo, update_diff: Tuple[int, ...]):
-    pass
+def update_bank_development_cards(repo: git.Repo, update_diff: [int]):
+    if len(update_diff) != 5:
+        print(f"illegal update length: {len(update_diff)} not 5")
+        return
+
+    path = os.path.join(repo.working_dir, "state", "game", "bank", "development_cards")
+    # load old value
+    old_val = get_bank_development_cards(repo)
+
+    # can only shrink
+    for val in update_diff:
+        if val > 0:
+            print("illegal update: value above 0")
+            return
+
+    if update_diff != [0, 0, 0, 0, 0]:
+        new_val = []
+        for i, val in enumerate(update_diff):
+            if old_val[i] + val < 0:
+                print(f"illegal update: not enough cards. Available {old_val[i]}, decrease {val}")
+                return
+            new_val.append(old_val[i] + val)
+        with open(path, "w") as file:
+            file.write(f"{new_val}".replace("[", "").replace("]", "").replace(" ", ""))
 
 def get_discard_pile(repo: git.Repo):
     path = os.path.join(repo.working_dir, "state", "game", "discard_pile")
@@ -166,21 +232,51 @@ def get_discard_pile(repo: git.Repo):
         line = line.split(",")
         for i, val in enumerate(line):
             pile[i] = int(val)
-
     return pile
 
-def update_discard_pile(repo: git.Repo, update_diff: Tuple[int, ...]):
-    pass
+def update_discard_pile(repo: git.Repo, update_diff: [int]):
+    path = os.path.join(repo.working_dir, "state", "game", "discard_pile")
+
+    if len(update_diff) != 3:
+        print(f"illegal update length: {len(update_diff)} not 3")
+        return
+    # load old value
+    old_val = get_discard_pile(repo)
+
+    # can only grow
+    for val in update_diff:
+        if val < 0:
+            print("illegal update: value below 0")
+            return
+
+    if update_diff != [0, 0, 0]:
+        new_val = []
+        for i, val in enumerate(update_diff):
+            new_val.append(old_val[i] + val)
+        with open(path, "w") as file:
+            string = f"{new_val}".replace("[", "").replace("]", "").replace(" ", "")
+            file.write(string)
 
 # bandit
-def get_bandit(repo: git.Repo):
+def get_bandit(repo: git.Repo, hexagons: [HexagonTile]) -> HexagonTile:
     path = os.path.join(repo.working_dir, "state", "game", "bandit")
     with open(path, "r") as file:
         line = file.readline()
-    return int(line)
+    return hexagons[int(line)]
 
-def update_bandit(repo: git.Repo, coords: MapTile):
-    pass
+def update_bandit(repo: git.Repo, hexagons: [HexagonTile], new_coords: int):
+    path = os.path.join(repo.working_dir, "state", "game", "bandit")
+    # load old value
+    old_val = get_bandit(repo, hexagons)
+
+    if old_val.id != new_coords:
+        new_val = hexagons[new_coords]
+        if new_val.resource == "Water":
+            print(f"Illegal Bandit update: Tile: {new_coords}")
+        else:
+            with open(path, "w") as file:
+                file.write(f"{new_coords}")
+
 
 def get_all_settlement_points(repo: git.Repo, hexagons: [HexagonTile]) -> [Settlement_point]:
     path = os.path.join(repo.working_dir, "state", "game", "settlement_points")
@@ -255,3 +351,15 @@ def is_adjacent_road_to_settlement(settlement_point: Settlement_point, road_poin
     return False
 
 
+def create_git_dirs() -> [git.repo]:
+    alice = init_repo(ROOT_DIR, "Catan_Alice", "alice", "alice@example.com", False)
+    bob = init_repo(REMOTE_DIR, "Catan_Bob", "bob", "bob@example.com", False)
+
+    name = get_repo_author_gitdir(bob.git_dir)
+    alice.create_remote(name, bob.git_dir)
+    print(f"created Remote {name} for {get_repo_author_gitdir(alice.git_dir)}")
+
+    name = get_repo_author_gitdir(alice.git_dir)
+    bob.create_remote(name, alice.git_dir)
+    print(f"created Remote {name} for {get_repo_author_gitdir(bob.git_dir)}")
+    return alice, bob

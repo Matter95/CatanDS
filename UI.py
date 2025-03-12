@@ -3,25 +3,18 @@ from typing import List
 from typing import Tuple
 
 import git
-from git import Repo, NoSuchPathError
 
 from gloabl_definitions import (
     Map,
     MapTile,
     _left_most_xy_coords,
-    _screen_width,
-    _screen_height,
     _hexagon_radius,
     _hex_num_width,
     _hex_num_height, HexagonTile, Road_point, Settlement_point, ROOT_DIR, REMOTE_DIR, _player_colour
 )
 import pygame
 import pygame.gfxdraw
-
-from initializing import initialize_game_state
 from repo_utils import init_repo, get_repo_author_gitdir
-from utils import get_initial_phase, get_player_buildings, get_player_hand, get_settlement_point, get_road_point, \
-    get_all_settlement_points, get_all_road_points, get_all_available_road_points, get_active_player
 
 """
 Taken and modified from
@@ -137,63 +130,5 @@ def render_game_pieces(screen, settlement_points: [Settlement_point], road_point
         point.render(screen)
     pygame.display.flip()
 
-def create_git_dirs() -> [git.repo]:
-    alice = init_repo(ROOT_DIR, "Catan_Alice", "alice", "alice@example.com", False)
-    bob = init_repo(REMOTE_DIR, "Catan_Bob", "bob", "bob@example.com", False)
-
-    name = get_repo_author_gitdir(bob.git_dir)
-    alice.create_remote(name, bob.git_dir)
-    print(f"created Remote {name} for {get_repo_author_gitdir(alice.git_dir)}")
-
-    name = get_repo_author_gitdir(alice.git_dir)
-    bob.create_remote(name, alice.git_dir)
-    print(f"created Remote {name} for {get_repo_author_gitdir(bob.git_dir)}")
-    return alice, bob
-
-def main():
-    """Main function"""
-
-
-    game = pygame.display.set_mode((_screen_width, _screen_height))
-    game.fill((69, 139, 209))
-
-    clock = pygame.time.Clock()
-    hexagons = init_hexagons()
-
-    render_static(game, hexagons)
-
-    # check if there is already a game around
-    try:
-        repo = Repo(os.path.join(ROOT_DIR, "Catan_Alice"))
-        init_state = get_initial_phase(repo)
-    except NoSuchPathError:
-        init_state = None
-
-    # only initialize if no init state around
-    if init_state is None:
-        settlement_points = init_settlement_points(hexagons)
-        road_points = init_road_points(hexagons)
-        repos = create_git_dirs()
-        for repo in repos:
-            initialize_game_state(repo, settlement_points, road_points)
-        repo = repos[0]
-
-    active_player = get_active_player(repo)
-    settlement_points = get_all_settlement_points(repo, hexagons)
-    road_points = get_all_road_points(repo, hexagons)
-    transparents = get_all_available_road_points(repo, road_points, settlement_points, 2)
-    render_transparent(game, [], transparents, 2)
-
-    terminated = False
-    while not terminated:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                terminated = True
-
-        #render_transparent(game, settlement_points, road_points)
-        render_game_pieces(game, settlement_points, [])
-        clock.tick(50)
-
-    pygame.display.quit()
-
-main()
+def render_player_cards(screen, player_hand):
+    pass
