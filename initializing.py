@@ -125,13 +125,92 @@ def initialize_game_state(
 
     return comment_id
 
-def init_phase_one(repo: git.Repo, hexagons: [HexagonTile]) -> git.Commit:
+def init_phase_one(repo: git.Repo, hexagons: [HexagonTile], parent: git.Commit) -> git.Commit:
     """
     Initialization phase one. Each player has to place a village and a road.
 
     Parameters
     ----------
     repo : current git repository
+
+    Returns
+    -------
+    git.Commit
+    """
+    author_name = get_repo_author_gitdir(repo.git_dir)
+    active_player = get_initial_active_player(repo)
+    settlement_points = get_all_settlement_points(repo, hexagons)
+    road_points = get_all_road_points(repo, hexagons)
+
+    # compute all places we can place a settlement
+    available_settlement_points = get_all_available_settlement_points(repo, settlement_points, active_player, hexagons)
+    # choose a settlement
+    pick = randrange(len(available_settlement_points))
+    sp: Settlement_point = available_settlement_points[pick]
+    sp.owner = _player_colour[active_player]
+    sp.settlement_type = "Village"
+
+    # compute all places we can place a road adjacent to a settlement
+    available_road_points = get_all_available_road_points_for_settlement(repo, road_points, sp, active_player, hexagons)
+    # choose a road
+    pick = randrange(len(available_road_points))
+    rp = available_road_points[pick]
+
+    sp_id = get_settlement_point_index(sp, settlement_points)
+    rp_id = get_road_point_index(rp, road_points)
+
+    update_settlement_point(repo, sp_id, sp.owner, sp.settlement_type)
+    update_road_point(repo, rp_id, _player_colour[active_player])
+
+    # phase is over
+    if active_player + 1 == _number_of_players:
+        update_initial_phase(repo)
+
+    update_initial_active_player(repo)
+
+    update_player_buildings(repo, active_player, [-1,-1,0])
+
+    files = [
+        os.path.join(repo.working_dir, "state", "game", "settlement_points"),
+        os.path.join(repo.working_dir, "state", "game", "road_points"),
+        os.path.join(repo.working_dir, "state", "game", "player_buildings", f"player_{active_player + 1}"),
+
+        os.path.join(repo.working_dir, "state", "initialization", "active_player"),
+        os.path.join(repo.working_dir, "state", "initialization", "init_phase")
+    ]
+
+    # add files to index
+    for file_path in files:
+        repo.index.add(file_path)
+    repo.index.write_tree()
+
+    author = git.Actor(author_name, f"{author_name}@git.com")
+    commit_id = repo.index.commit(
+        f"phase_one_player_{active_player}",
+        [parent],
+        True,
+        author,
+        author,
+    )
+
+    # change HEAD
+    repo.git.update_ref(f"refs/heads/game_state", commit_id)
+
+    return commit_id
+
+
+
+
+
+def init_phase_two(repo: git.Repo, hexagons: [HexagonTile], parent: git.Commit) -> git.Commit:
+    """
+    Initialization phase one. Each player has to place a village and a road.
+
+    Parameters
+    ----------
+    repo: current git repository
+    hexagons: map hexagons
+    parent: latest commit
 
     Returns
     -------
@@ -169,7 +248,15 @@ def init_phase_one(repo: git.Repo, hexagons: [HexagonTile]) -> git.Commit:
     update_player_buildings(repo, active_player, [-1,-1,0])
 
     files = [
+        os.path.join(repo.working_dir, "state", "game", "active_player"),
+        os.path.join(repo.working_dir, "state", "game", "settlement_points"),
+        os.path.join(repo.working_dir, "state", "game", "road_points"),
+        os.path.join(repo.working_dir, "state", "game", "player_buildings", f"player_{active_player}"),
+        os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{active_player}", "resource_cards"),
+        os.path.join(repo.working_dir, "state", "game", "turn phase"),
 
+        os.path.join(repo.working_dir, "state", "initialization", "active_player"),
+        os.path.join(repo.working_dir, "state", "initialization", "init_phase")
     ]
 
     # add files to index
@@ -177,38 +264,16 @@ def init_phase_one(repo: git.Repo, hexagons: [HexagonTile]) -> git.Commit:
         repo.index.add(file_path)
     repo.index.write_tree()
 
-    author_name = get_repo_author_gitdir(repo.git_dir)
     author = git.Actor(author_name, f"{author_name}@git.com")
-    comment_id = repo.index.commit(
-        "Initial commit",
-        [],
+    commit_id = repo.index.commit(
+        f"phase_one_{active_player}",
+        [parent],
         True,
         author,
         author,
     )
 
     # change HEAD
-    repo.git.update_ref(f"refs/heads/game_state", comment_id)
+    repo.git.update_ref(f"refs/heads/game_state", commit_id)
 
-    return comment_id
-
-
-
-
-
-def init_phase_two(repo: git.Repo) -> git.Commit:
-    """
-    Initialization phase one. Each player has to place a village and a road.
-
-    Parameters
-    ----------
-    repo : current git repository
-
-    Returns
-    -------
-    git.Commit
-    """
-    author_name = get_repo_author_gitdir(repo.git_dir)
-
-    active_player = get_initial_active_player(repo)
-
+    return commit_id

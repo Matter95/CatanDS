@@ -20,10 +20,8 @@ from initializing import initialize_game_state, init_phase_one, init_phase_two
 from utils import (
     get_initial_phase,
     get_turn_phase,
-    get_active_player,
     get_all_settlement_points,
-    get_all_road_points, create_git_dirs, update_bandit, update_discard_pile, update_bank_development_cards,
-    update_settlement_point
+    get_all_road_points, create_git_dirs,
 )
 
 def main():
@@ -40,6 +38,7 @@ def main():
     # check if there is already a game around
     try:
         repo = Repo(os.path.join(ROOT_DIR, "Catan_Alice"))
+        latest_commit = repo.head.commit
         init_state = get_initial_phase(repo)
     except NoSuchPathError:
         init_state = None
@@ -53,13 +52,16 @@ def main():
         for repo in repos:
             initialize_game_state(repo, settlement_points, road_points)
         repo = repos[0]
+        latest_commit = repo.head.commit
 
-    initial_phase = get_initial_phase(repo)
+
     turn_phase = get_turn_phase(repo)
 
     terminated = False
     while not terminated:
         clock.tick(30)
+        initial_phase = get_initial_phase(repo)
+        turn_phase = get_turn_phase(repo)
 
         for event in pygame.event.get():
             # actions that are always possible
@@ -73,10 +75,10 @@ def main():
             if turn_phase == "bot":
                 # Initial Phase One
                 if initial_phase == "phase_one":
-                    latest_commit = init_phase_one(repo, hexagons)
+                    latest_commit = init_phase_one(repo, hexagons, latest_commit)
                 # Initial Phase Two
-                elif initial_phase == "phase_two":
-                    latest_commit = init_phase_two(repo, hexagons)
+                #elif initial_phase == "phase_two":
+                    #latest_commit = init_phase_two(repo, hexagons, latest_commit)
 
             else:
                 # Dice Roll

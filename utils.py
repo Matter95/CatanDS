@@ -361,17 +361,18 @@ def get_all_settlement_points(repo: git.Repo, hexagons: [HexagonTile]) -> [Settl
     return settlement_points
 
 
-def get_all_available_settlement_points(repo: git.Repo, settlement_points: [Settlement_point], player_nr: int) -> [Road_point]:
+def get_all_available_settlement_points(repo: git.Repo, settlement_points: [Settlement_point], player_nr: int, hexagons: [HexagonTile]) -> [Road_point]:
     available_settlement_points = []
 
     for point in settlement_points:
         # check for bandit
-        bandit = get_bandit(repo, point.hexagons)
+        bandit = get_bandit(repo, hexagons)
         if bandit in point.coords:
             continue
         if point.owner == "bot":
             # check that there are no other settlements neighbouring this point
             buildable = True
+
             for neighbour in settlement_points:
                 if is_adjacent_settlement(point, neighbour) and neighbour.owner != "bot":
                     buildable = False
@@ -440,12 +441,12 @@ def get_road_point_raw(repo: git.Repo, index: int) -> str:
 
     return line
 
-def get_all_available_road_points(repo: git.Repo, road_points: [Road_point], settlement_points: [Settlement_point], player_nr: int) -> [Road_point]:
+def get_all_available_road_points(repo: git.Repo, road_points: [Road_point], settlement_points: [Settlement_point], player_nr: int, hexagons: [HexagonTile]) -> [Road_point]:
     available_road_points = []
 
     for point in road_points:
         # check for bandit
-        bandit = get_bandit(repo, point.hexagons)
+        bandit = get_bandit(repo, hexagons)
         if bandit in point.coords:
             continue
         if point.owner == "bot":
@@ -456,19 +457,18 @@ def get_all_available_road_points(repo: git.Repo, road_points: [Road_point], set
                     break
     return available_road_points
 
-def get_all_available_road_points_for_settlement(repo: git.Repo, road_points: [Road_point], settlement_point: Settlement_point, player_nr: int) -> [Road_point]:
+def get_all_available_road_points_for_settlement(repo: git.Repo, road_points: [Road_point], settlement_point: Settlement_point, player_nr: int, hexagons: [HexagonTile]) -> [Road_point]:
     available_road_points = []
+    # check for bandit
+    bandit = get_bandit(repo, hexagons)
 
     for point in road_points:
-        # check for bandit
-        bandit = get_bandit(repo, point.hexagons)
         if bandit in point.coords:
             continue
         if point.owner == "bot":
-            # check if there is a settlement adjacent to this road point
+            # check if the settlement is adjacent to this road point
             if is_adjacent_road_to_settlement(settlement_point, point) and owned_by_player(settlement_point, _player_colour[player_nr]):
                 available_road_points.append(point)
-                break
     return available_road_points
 
 

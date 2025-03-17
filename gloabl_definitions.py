@@ -32,7 +32,7 @@ _resource_card_pool: Tuple[int, ...] = (19, 19, 19, 19, 19)
 _resource_card_pool_str: str = "19,19,19,19,19"
 _development_card_pool: Tuple[int, ...] = (2, 2, 2, 14, 5)
 _development_card_pool_str: str = "2,2,2,14,5"
-_number_of_players = 4
+_number_of_players = 2
 
 @dataclass
 class HexagonTile:
