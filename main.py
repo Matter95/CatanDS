@@ -16,13 +16,14 @@ from gloabl_definitions import (
     _screen_width,
     _screen_height, ROOT_DIR,
 )
-from initializing import initialize_game_state
+from initializing import initialize_game_state, init_phase_one, init_phase_two
 from utils import (
     get_initial_phase,
     get_turn_phase,
     get_active_player,
     get_all_settlement_points,
-    get_all_road_points, create_git_dirs, update_bandit, update_discard_pile, update_bank_development_cards
+    get_all_road_points, create_git_dirs, update_bandit, update_discard_pile, update_bank_development_cards,
+    update_settlement_point
 )
 
 def main():
@@ -60,10 +61,6 @@ def main():
     while not terminated:
         clock.tick(30)
 
-        # we are in the initial phase
-        if turn_phase == "bot":
-            pass
-
         for event in pygame.event.get():
             # actions that are always possible
             if event.type == pygame.QUIT:
@@ -72,24 +69,30 @@ def main():
                 if event.key == K_ESCAPE:
                     terminated = True
 
-            # Initial Phase One
+            # we are in the initial phase
+            if turn_phase == "bot":
+                # Initial Phase One
+                if initial_phase == "phase_one":
+                    latest_commit = init_phase_one(repo, hexagons)
+                # Initial Phase Two
+                elif initial_phase == "phase_two":
+                    latest_commit = init_phase_two(repo, hexagons)
 
-            # Initial Phase Two
+            else:
+                # Dice Roll
 
-            # Dice Roll
+                # Trading
+                # No trade
+                if event.type == KEYUP:
+                    if event.key == K_RETURN:
+                        pass
+                # Choose Cards to Trade
 
-            # Trading
-            # No trade
-            if event.type == KEYUP:
-                if event.key == K_RETURN:
-                    pass
-            # Choose Cards to Trade
-
-            # Building
-            # No building
-            if event.type == KEYUP:
-                if event.key == K_RETURN:
-                    pass
+                # Building
+                # No building
+                if event.type == KEYUP:
+                    if event.key == K_RETURN:
+                        pass
 
 
         settlement_points = get_all_settlement_points(repo, hexagons)

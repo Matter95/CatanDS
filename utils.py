@@ -1,11 +1,21 @@
 import os
-from typing import Tuple, List
+from typing import List
 
 import git
-from git import Git
 
-from gloabl_definitions import MapTile, Settlement_point, Map, HexagonTile, Road_point, _player_colour, ROOT_DIR, \
-    REMOTE_DIR
+from gloabl_definitions import (
+    Settlement_point,
+    HexagonTile,
+    Road_point,
+    _player_colour,
+    ROOT_DIR,
+    REMOTE_DIR,
+    _resource_card_pool,
+    _number_of_players,
+    _development_card_pool,
+    _player_building_pool,
+    TEST_DIR,
+)
 from repo_utils import init_repo, get_repo_author_gitdir
 
 
@@ -38,19 +48,24 @@ def init_phase_next(current_phase: str) -> str:
         return ""
 
 def turn_phase_next(current_phase: str) -> str:
-    if current_phase == "dice_roll":
+    if current_phase == "bot":
+        return "dice_roll"
+    elif current_phase == "dice_roll":
         return "trading"
     elif current_phase == "trading":
         return "building"
     elif current_phase == "building":
         return "dice_roll"
     else:
+        print(f"illegal turn phase: {current_phase}")
         return ""
 
 
 
 def get_wharf_type(settlement: Settlement_point):
     pass
+
+# getter and setter for the files
 def get_initial_phase(repo: git.Repo):
     try:
         with open(os.path.join(repo.working_dir, "state", "initialization", "init_phase"), "r") as file:
@@ -59,76 +74,139 @@ def get_initial_phase(repo: git.Repo):
     except FileNotFoundError:
         return None
 
+def update_initial_phase(repo: git.Repo):
+    # load old value
+    old_val = get_initial_phase(repo)
+    # get next phase
+    new_val = init_phase_next(old_val)
+
+    with open(os.path.join(repo.working_dir, "state", "initialization", "init_phase"), "w") as file:
+        file.write(f"{new_val}")
+
 def get_initial_active_player(repo: git.Repo):
     with open(os.path.join(repo.working_dir, "state", "initialization", "active_player"), "r") as file:
         line = file.readline()
-    return line
+    return int(line)
+
+def update_initial_active_player(repo: git.Repo):
+    old_val = int(get_initial_active_player(repo))
+
+    new_val = (old_val + 1) % _number_of_players
+
+    with open(os.path.join(repo.working_dir, "state", "initialization", "active_player"), "w") as file:
+        file.write(f"{new_val}")
 
 def get_active_player(repo: git.Repo):
     with open(os.path.join(repo.working_dir, "state", "game", "active_player"), "r") as file:
         line = file.readline()
-    return line
+    return int(line)
+
+def update_active_player(repo: git.Repo):
+    old_val = get_active_player(repo)
+
+    new_val = (old_val + 1) % _number_of_players
+
+    with open(os.path.join(repo.working_dir, "state", "game", "active_player"), "w") as file:
+        file.write(f"{new_val}")
+
 
 def get_turn_phase(repo: git.Repo):
     with open(os.path.join(repo.working_dir, "state", "game", "turn_phase"), "r") as file:
         line = file.readline()
     return line
 
+def update_turn_phase(repo: git.Repo):
+    # load old value
+    old_val = get_turn_phase(repo)
+    # get next phase
+    new_val = turn_phase_next(old_val)
+
+    with open(os.path.join(repo.working_dir, "state", "game", "turn_phase"), "w") as file:
+        file.write(f"{new_val}")
+
+
 # player functions
 def get_player_hand(repo: git.Repo, hand_type: str, player_nr: int) -> List[int] | None:
-    path = os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{player_nr}")
+
 
     if hand_type == "resource_cards":
         vals = [0, 0, 0, 0, 0]
-        path = os.path.join(path, "resource_cards")
     elif hand_type == "bought_cards":
         vals = [0, 0, 0, 0, 0]
-        path = os.path.join(path, "bought_cards")
     elif hand_type == "available_cards":
         vals = [0, 0, 0]
-        path = os.path.join(path, "available_cards")
     elif hand_type == "unveiled_cards":
         vals = [0, 0]
-        path = os.path.join(path, "unveiled_cards")
     else:
         return None
 
-    with open(path, "r") as file:
+    with open(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{player_nr + 1}", hand_type), "r") as file:
         line = file.readline()
         line = line.split(",")
 
-        for i, v in enumerate(line):
-            vals[i] = int(v)
+        for i, val in enumerate(line):
+            vals[i] = int(val)
 
     return vals
 
-def update_player_hand(repo: git.Repo, player_nr: int, hand_type: str, update_diff: Tuple[int, ...]):
-    pass
+def update_player_hand(repo: git.Repo, hand_type: str, player_nr: int, update_diff: [int]):
+    path = os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{player_nr + 1}")
 
-def get_player_unveiled_cards(repo: git.Repo, player_nr: int):
-    pass
+    old_val = get_player_hand(repo, hand_type, player_nr)
 
-def update_player_unveiled_cards(repo: git.Repo, player_nr: int, update_diff: Tuple[int, ...]):
-    pass
+    if hand_type == "resource_cards":
+        empty = [0, 0, 0, 0, 0]
+        path = os.path.join(path, "resource_cards")
+    elif hand_type == "bought_cards":
+        empty = [0, 0, 0, 0, 0]
+        path = os.path.join(path, "bought_cards")
+    elif hand_type == "available_cards":
+        empty = [0, 0, 0]
+        path = os.path.join(path, "available_cards")
+    elif hand_type == "unveiled_cards":
+        empty = [0, 0]
+        path = os.path.join(path, "unveiled_cards")
+    else:
+        print(f"illegal hand_type: {hand_type}")
+        return
+
+    if update_diff != empty:
+        new_val = []
+        for i, val in enumerate(update_diff):
+            if hand_type == "resource_cards":
+                if 0 > old_val[i] + val or old_val[i] + val  > _resource_card_pool[i]:
+                    print(f"illegal update: Available {old_val[i]}, add {update_diff[i]}, max {_resource_card_pool[i]}")
+                    return
+            else:
+                j = i
+                if hand_type == "unveiled_cards":
+                    j += 3
+                if 0 > old_val[i] + val or old_val[i] + val > _development_card_pool[j]:
+                    print(
+                        f"illegal update: Available {old_val[i]}, add {update_diff[i]}, max {_resource_card_pool[i]}")
+                    return
+            new_val.append(old_val[i] + val)
+        with open(path, "w") as file:
+            file.write(f"{new_val}".replace("[", "").replace("]", "").replace(" ", ""))
+
 
 def get_player_buildings(repo: git.Repo, player_nr: int) -> [int]:
-    path = os.path.join(repo.working_dir, "state", "game", "player_buildings", f"player_{player_nr}")
+    path = os.path.join(repo.working_dir, "state", "game", "player_buildings", f"player_{player_nr + 1}")
     buildings: [int] = []
     with open(path, "r") as file:
         line = file.readline()
         line = line.split(",")
         for element in line:
-            buildings.append(element)
-
+            buildings.append(int(element))
     return buildings
 
 def get_player_buildings_type(repo: git.Repo, building_type: str, player_nr: int) -> int | None:
     buildings = get_player_buildings(repo, player_nr)
-    if building_type == "road":
+    if building_type == "Road":
         building = buildings[0]
-    elif building_type == "village":
+    elif building_type == "Village":
         building = buildings[1]
-    elif building_type == "city":
+    elif building_type == "City":
         building = buildings[2]
     else:
         print("illegal building type")
@@ -137,19 +215,14 @@ def get_player_buildings_type(repo: git.Repo, building_type: str, player_nr: int
     return building
 
 def update_player_buildings(repo: git.Repo, player_nr: int, update_diff: [int]):
-    path = os.path.join(repo.working_dir, "state", "game", "player_buildings", f"player_{player_nr}")
+    path = os.path.join(repo.working_dir, "state", "game", "player_buildings", f"player_{player_nr + 1}")
 
     old_val = get_player_buildings(repo, player_nr)
-
-    for val in update_diff:
-        if old_val + val < 0:
-            print(f"illegal update: not enough cards. Available {old_val}, add {val}")
-            return
 
     if update_diff != [0, 0, 0]:
         new_val = []
         for i, val in enumerate(update_diff):
-            if old_val[i] + val < 0:
+            if 0 > old_val[i] + val or old_val[i] + val > _player_building_pool[i]:
                 print(f"illegal update: not enough cards. Available {old_val[i]}, decrease {val}")
                 return
             new_val.append(old_val[i] + val)
@@ -168,19 +241,19 @@ def get_bank_resources(repo: git.Repo):
 
     return resource_cards
 
-def update_bank_resources(repo: git.Repo, update_diff: Tuple[int, ...]):
+def update_bank_resources(repo: git.Repo, update_diff: [int]):
     if len(update_diff) != 5:
         print(f"illegal update length: {len(update_diff)} not 5")
         return
 
     path = os.path.join(repo.working_dir, "state", "game", "bank", "resource_cards")
     # load old value
-    old_val = get_bank_development_cards(repo)
+    old_val = get_bank_resources(repo)
 
     if update_diff != [0, 0, 0, 0, 0]:
         new_val = []
         for i, val in enumerate(update_diff):
-            if old_val[i] + val < 0:
+            if 0 > old_val[i] + val or old_val[i] + val > _resource_card_pool[i]:
                 print(f"illegal update: not enough cards. Available {old_val[i]}, decrease {val}")
                 return
             new_val.append(old_val[i] + val)
@@ -217,7 +290,7 @@ def update_bank_development_cards(repo: git.Repo, update_diff: [int]):
     if update_diff != [0, 0, 0, 0, 0]:
         new_val = []
         for i, val in enumerate(update_diff):
-            if old_val[i] + val < 0:
+            if 0 > old_val[i] + val <= _development_card_pool[i]:
                 print(f"illegal update: not enough cards. Available {old_val[i]}, decrease {val}")
                 return
             new_val.append(old_val[i] + val)
@@ -287,6 +360,25 @@ def get_all_settlement_points(repo: git.Repo, hexagons: [HexagonTile]) -> [Settl
             settlement_points.append(Settlement_point({hexagons[int(line[0])], hexagons[int(line[1])], hexagons[int(line[2])]}, line[3], line[4].replace("\n","")))
     return settlement_points
 
+
+def get_all_available_settlement_points(repo: git.Repo, settlement_points: [Settlement_point], player_nr: int) -> [Road_point]:
+    available_settlement_points = []
+
+    for point in settlement_points:
+        # check for bandit
+        bandit = get_bandit(repo, point.hexagons)
+        if bandit in point.coords:
+            continue
+        if point.owner == "bot":
+            # check that there are no other settlements neighbouring this point
+            buildable = True
+            for neighbour in settlement_points:
+                if is_adjacent_settlement(point, neighbour) and neighbour.owner != "bot":
+                    buildable = False
+            if buildable:
+                available_settlement_points.append(point)
+    return available_settlement_points
+
 def get_settlement_point(repo: git.Repo, index: int, hexagons: [HexagonTile]):
     path = os.path.join(repo.working_dir, "state", "game", "settlement_points")
     with open(path, "r") as file:
@@ -296,8 +388,30 @@ def get_settlement_point(repo: git.Repo, index: int, hexagons: [HexagonTile]):
 
     return Settlement_point({hexagons[int(line[0])], hexagons[int(line[1])], hexagons[int(line[2])]}, line[3], line[4].replace("\n",""))
 
+def get_settlement_point_raw(repo: git.Repo, index: int):
+    path = os.path.join(repo.working_dir, "state", "game", "settlement_points")
+    with open(path, "r") as file:
+        for i in range(index + 1):
+            line = file.readline()
+    return line
+
 def update_settlement_point(repo: git.Repo, index: int, owner: str, settlement_type: str):
-    pass
+    path = os.path.join(repo.working_dir, "state", "game", "settlement_points")
+    raw_line = get_settlement_point_raw(repo, index)
+    new_line = raw_line.replace("\n","").split(",")
+    new_line[3] = owner
+    new_line[4] = settlement_type
+    new_line = str.join(",", new_line)
+    new_line += "\n"
+    old_file = ""
+    with open(path, "r") as f:
+        old_file += f.read()
+
+    old_file = old_file.replace(raw_line, new_line)
+
+    with open(path, "w") as f:
+        f.write(old_file)
+
 
 def get_all_road_points(repo: git.Repo, hexagons: [HexagonTile]) -> [Road_point]:
     path = os.path.join(repo.working_dir, "state", "game", "road_points")
@@ -318,22 +432,61 @@ def get_road_point(repo: git.Repo, index: int, hexagons: [HexagonTile]):
     return Road_point({hexagons[int(line[0])], hexagons[int(line[1])]}, line[2].replace("\n",""))
 
 
+def get_road_point_raw(repo: git.Repo, index: int) -> str:
+    path = os.path.join(repo.working_dir, "state", "game", "road_points")
+    with open(path, "r") as file:
+        for i in range(index + 1):
+            line = file.readline()
+
+    return line
+
 def get_all_available_road_points(repo: git.Repo, road_points: [Road_point], settlement_points: [Settlement_point], player_nr: int) -> [Road_point]:
     available_road_points = []
 
     for point in road_points:
+        # check for bandit
+        bandit = get_bandit(repo, point.hexagons)
+        if bandit in point.coords:
+            continue
         if point.owner == "bot":
+            # check if there is a settlement adjacent to this road point
             for sp in settlement_points:
                 if is_adjacent_road_to_settlement(sp, point) and owned_by_player(sp, _player_colour[player_nr]):
                     available_road_points.append(point)
                     break
     return available_road_points
 
+def get_all_available_road_points_for_settlement(repo: git.Repo, road_points: [Road_point], settlement_point: Settlement_point, player_nr: int) -> [Road_point]:
+    available_road_points = []
+
+    for point in road_points:
+        # check for bandit
+        bandit = get_bandit(repo, point.hexagons)
+        if bandit in point.coords:
+            continue
+        if point.owner == "bot":
+            # check if there is a settlement adjacent to this road point
+            if is_adjacent_road_to_settlement(settlement_point, point) and owned_by_player(settlement_point, _player_colour[player_nr]):
+                available_road_points.append(point)
+                break
+    return available_road_points
 
 
 def update_road_point(repo: git.Repo, index: int, owner: str):
-    pass
+    path = os.path.join(repo.working_dir, "state", "game", "road_points")
+    raw_line = get_road_point_raw(repo, index)
+    new_line = raw_line.replace("\n","").split(",")
+    new_line[2] = owner
+    new_line = str.join(",", new_line)
+    new_line += "\n"
+    old_file = ""
+    with open(path, "r") as f:
+        old_file += f.read()
 
+    old_file = old_file.replace(raw_line, new_line)
+
+    with open(path, "w") as f:
+        f.write(old_file)
 
 def owned_by_player(settlement_point: Settlement_point, owner: str):
     if settlement_point.owner == owner:
@@ -342,13 +495,32 @@ def owned_by_player(settlement_point: Settlement_point, owner: str):
         return False
 
 def is_adjacent_road_to_settlement(settlement_point: Settlement_point, road_point: Road_point) -> bool:
-    for tile_one in settlement_point.coords:
-        for tile_two in settlement_point.coords:
-            if tile_one.__eq__(tile_two):
-                continue
-            if tile_one in road_point.coords and tile_two in road_point.coords:
-                return True
-    return False
+    tile_one = list(settlement_point.coords)[0]
+    tile_two = list(settlement_point.coords)[1]
+    tile_three = list(settlement_point.coords)[2]
+
+    if tile_one in road_point.coords and tile_two in road_point.coords:
+        return True
+    elif tile_one in road_point.coords and tile_three in road_point.coords:
+        return True
+    elif tile_two in road_point.coords and tile_three in road_point.coords:
+        return True
+    else:
+        return False
+
+def is_adjacent_settlement(settlement_point: Settlement_point, neighbour: Settlement_point) -> bool:
+    tile_one = list(settlement_point.coords)[0]
+    tile_two = list(settlement_point.coords)[1]
+    tile_three = list(settlement_point.coords)[2]
+
+    if tile_one in neighbour.coords and tile_two in neighbour.coords:
+        return True
+    elif tile_one in neighbour.coords and tile_three in neighbour.coords:
+        return True
+    elif tile_two in neighbour.coords and tile_three in neighbour.coords:
+        return True
+    else:
+        return False
 
 
 def create_git_dirs() -> [git.repo]:
@@ -363,3 +535,22 @@ def create_git_dirs() -> [git.repo]:
     bob.create_remote(name, alice.git_dir)
     print(f"created Remote {name} for {get_repo_author_gitdir(bob.git_dir)}")
     return alice, bob
+
+
+def create_git_dir_test() -> [git.repo]:
+    test = init_repo(TEST_DIR, "Catan_Test", "test", "test@example.com", False)
+
+    return test
+
+
+def get_settlement_point_index(sp: Settlement_point, settlement_points: [Settlement_point]) -> int:
+    for i, point in enumerate(settlement_points):
+        if sp.coords == point.coords:
+            return i
+    return -1
+
+def get_road_point_index(rp: Road_point, road_points: [Road_point]) -> int:
+    for i, point in enumerate(road_points):
+        if rp.coords == point.coords:
+            return i
+    return -1

@@ -4,15 +4,18 @@ import os
 from dataclasses import dataclass
 from typing import Tuple, List
 import pygame
+from git import repo
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 REMOTE_DIR = os.path.join(ROOT_DIR, "Remote")
+TEST_DIR = os.path.join(ROOT_DIR, "Tests")
 
 
 pygame.init()
 pygame.font.init()
 pygame.display.init()
 _player_colour = ["Red", "Blue", "Green", "Orange"]
+_player_colour_reversed = ["Orange", "Green", "Blue", "Red"]
 _screen_width, _screen_height = pygame.display.get_desktop_sizes()[0]
 _hexagon_radius = 100
 _hex_num_width = 6
@@ -29,6 +32,7 @@ _resource_card_pool: Tuple[int, ...] = (19, 19, 19, 19, 19)
 _resource_card_pool_str: str = "19,19,19,19,19"
 _development_card_pool: Tuple[int, ...] = (2, 2, 2, 14, 5)
 _development_card_pool_str: str = "2,2,2,14,5"
+_number_of_players = 4
 
 @dataclass
 class HexagonTile:

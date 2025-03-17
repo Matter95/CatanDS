@@ -86,7 +86,12 @@ def init_settlement_points(hexagons: [HexagonTile]) -> List[Settlement_point]:
                 ):
                    # at least one tile should not be water
                     if tile_one.resource != "Water" or tile_two.resource != "Water" or tile_three.resource != "Water":
-                        settlement_points.append(Settlement_point({tile_one, tile_two, tile_three}, "bot", "bot"))
+                        exists = False
+                        for point in settlement_points:
+                            if tile_one in point.coords and tile_two in point.coords and tile_three in point.coords:
+                                exists = True
+                        if not exists:
+                            settlement_points.append(Settlement_point({tile_one, tile_two, tile_three}, "bot", "bot"))
     return settlement_points
 
 def init_road_points(hexagons: [HexagonTile]) -> List[Road_point]:

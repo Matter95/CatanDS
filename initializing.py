@@ -1,10 +1,25 @@
 import os
+from random import randrange
 
 import git
-from gloabl_definitions import _player_building_pool_str, _development_card_pool_str, _resource_card_pool_str, \
-    Settlement_point, Road_point
+from gloabl_definitions import (
+    _player_building_pool_str,
+    _development_card_pool_str,
+    _resource_card_pool_str,
+    Settlement_point,
+    Road_point, _player_colour, HexagonTile, _number_of_players
+)
 from repo_utils import get_repo_author_gitdir
-from utils import create_folder_structure
+from utils import (
+    create_folder_structure,
+    get_initial_active_player,
+    get_all_available_settlement_points,
+    get_all_settlement_points,
+    get_all_road_points,
+    get_all_available_road_points_for_settlement, update_active_player, update_settlement_point, update_road_point,
+    get_settlement_point_index, get_road_point_index, update_initial_active_player, update_initial_phase,
+    update_player_buildings
+)
 
 
 def initialize_game_state(
@@ -59,7 +74,7 @@ def initialize_game_state(
             with open(file_path, "x") as file:
                 val = ""
                 if file_path.endswith("active_player"):
-                    val = "1"
+                    val = "0"
                 elif file_path.endswith("init_phase"):
                     val = "phase_one"
                 elif file_path.__contains__("resource_cards") and file_path.__contains__("player_hands"):
@@ -110,7 +125,78 @@ def initialize_game_state(
 
     return comment_id
 
-def init_phase_one(repo: git.Repo, ) -> git.Commit:
+def init_phase_one(repo: git.Repo, hexagons: [HexagonTile]) -> git.Commit:
+    """
+    Initialization phase one. Each player has to place a village and a road.
+
+    Parameters
+    ----------
+    repo : current git repository
+
+    Returns
+    -------
+    git.Commit
+    """
+    author_name = get_repo_author_gitdir(repo.git_dir)
+    active_player = get_initial_active_player(repo)
+    settlement_points = get_all_settlement_points(repo, hexagons)
+    road_points = get_all_road_points(repo, hexagons)
+
+    # compute all places we can place a settlement
+    available_settlement_points = get_all_available_settlement_points(repo, settlement_points, active_player)
+    # choose a settlement
+    pick = randrange(len(available_settlement_points))
+    sp = available_settlement_points[pick]
+
+    # compute all places we can place a road adjacent to a settlement
+    available_road_points = get_all_available_road_points_for_settlement(repo, road_points, sp, active_player)
+    # choose a road
+    pick = randrange(len(available_road_points))
+    rp = available_road_points(pick)
+
+    sp_id = get_settlement_point_index(sp, settlement_points)
+    rp_id = get_road_point_index(rp, road_points)
+
+    update_settlement_point(repo, sp_id, _player_colour[active_player], "Village")
+    update_road_point(repo, rp_id, _player_colour[active_player])
+
+    # phase is over
+    if active_player == len(_number_of_players):
+        update_initial_phase(repo)
+
+    update_initial_active_player(repo)
+
+    update_player_buildings(repo, active_player, [-1,-1,0])
+
+    files = [
+
+    ]
+
+    # add files to index
+    for file_path in files:
+        repo.index.add(file_path)
+    repo.index.write_tree()
+
+    author_name = get_repo_author_gitdir(repo.git_dir)
+    author = git.Actor(author_name, f"{author_name}@git.com")
+    comment_id = repo.index.commit(
+        "Initial commit",
+        [],
+        True,
+        author,
+        author,
+    )
+
+    # change HEAD
+    repo.git.update_ref(f"refs/heads/game_state", comment_id)
+
+    return comment_id
+
+
+
+
+
+def init_phase_two(repo: git.Repo) -> git.Commit:
     """
     Initialization phase one. Each player has to place a village and a road.
 
@@ -124,4 +210,5 @@ def init_phase_one(repo: git.Repo, ) -> git.Commit:
     """
     author_name = get_repo_author_gitdir(repo.git_dir)
 
+    active_player = get_initial_active_player(repo)
 

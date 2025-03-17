@@ -95,19 +95,3 @@ def create_setup_two_repos(repo_path: str, remote_path: str) -> [git.Repo]:
     repos.append(alice)
     repos.append(bob)
     return repos
-
-
-def create_post_text(n: int):
-    text = ""
-    for i in range(n):
-        text += lorem.paragraph()
-        text += "\n\n"
-    return text
-
-
-def create_comment_text(n: int):
-    text = ""
-    for i in range(n):
-        text += lorem.sentence()
-        text += " "
-    return text
