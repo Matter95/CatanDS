@@ -7,7 +7,7 @@ from gloabl_definitions import (
     _development_card_pool_str,
     _resource_card_pool_str,
     Settlement_point,
-    Road_point, _player_colour, HexagonTile, _number_of_players
+    Road_point, _player_colour, HexagonTile, _number_of_players, _player_colour_reversed
 )
 from repo_utils import get_repo_author_gitdir
 from utils import (
@@ -16,9 +16,19 @@ from utils import (
     get_all_available_settlement_points,
     get_all_settlement_points,
     get_all_road_points,
-    get_all_available_road_points_for_settlement, update_active_player, update_settlement_point, update_road_point,
-    get_settlement_point_index, get_road_point_index, update_initial_active_player, update_initial_phase,
-    update_player_buildings
+    get_all_available_road_points_for_settlement,
+    update_active_player,
+    update_settlement_point,
+    update_road_point,
+    get_settlement_point_index,
+    get_road_point_index,
+    update_initial_active_player,
+    update_initial_phase,
+    update_player_buildings,
+    get_resources_from_hextile,
+    update_player_hand,
+    update_turn_phase,
+    get_player_reverse_index, update_initial_active_player_rev,
 )
 
 
@@ -165,9 +175,8 @@ def init_phase_one(repo: git.Repo, hexagons: [HexagonTile], parent: git.Commit) 
     # phase is over
     if active_player + 1 == _number_of_players:
         update_initial_phase(repo)
-
-    update_initial_active_player(repo)
-
+    else:
+        update_initial_active_player(repo)
     update_player_buildings(repo, active_player, [-1,-1,0])
 
     files = [
@@ -222,16 +231,18 @@ def init_phase_two(repo: git.Repo, hexagons: [HexagonTile], parent: git.Commit) 
     road_points = get_all_road_points(repo, hexagons)
 
     # compute all places we can place a settlement
-    available_settlement_points = get_all_available_settlement_points(repo, settlement_points, active_player)
+    available_settlement_points = get_all_available_settlement_points(repo, settlement_points, active_player, hexagons)
     # choose a settlement
     pick = randrange(len(available_settlement_points))
     sp = available_settlement_points[pick]
+    sp.owner = _player_colour[active_player]
+    sp.settlement_type = "Village"
 
     # compute all places we can place a road adjacent to a settlement
-    available_road_points = get_all_available_road_points_for_settlement(repo, road_points, sp, active_player)
+    available_road_points = get_all_available_road_points_for_settlement(repo, road_points, sp, active_player, hexagons)
     # choose a road
     pick = randrange(len(available_road_points))
-    rp = available_road_points(pick)
+    rp = available_road_points[pick]
 
     sp_id = get_settlement_point_index(sp, settlement_points)
     rp_id = get_road_point_index(rp, road_points)
@@ -239,21 +250,25 @@ def init_phase_two(repo: git.Repo, hexagons: [HexagonTile], parent: git.Commit) 
     update_settlement_point(repo, sp_id, _player_colour[active_player], "Village")
     update_road_point(repo, rp_id, _player_colour[active_player])
 
+    # get resources from second village
+    resources = get_resources_from_hextile(sp.coords)
+    update_player_hand(repo, "resource_cards", active_player, resources)
+
     # phase is over
-    if active_player == len(_number_of_players):
-        update_initial_phase(repo)
+    if active_player == 0:
+        update_turn_phase(repo)
 
-    update_initial_active_player(repo)
+    update_initial_active_player_rev(repo)
 
-    update_player_buildings(repo, active_player, [-1,-1,0])
+    update_player_buildings(repo, active_player , [-1,-1,0])
 
     files = [
         os.path.join(repo.working_dir, "state", "game", "active_player"),
         os.path.join(repo.working_dir, "state", "game", "settlement_points"),
         os.path.join(repo.working_dir, "state", "game", "road_points"),
-        os.path.join(repo.working_dir, "state", "game", "player_buildings", f"player_{active_player}"),
-        os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{active_player}", "resource_cards"),
-        os.path.join(repo.working_dir, "state", "game", "turn phase"),
+        os.path.join(repo.working_dir, "state", "game", "player_buildings", f"player_{active_player + 1}"),
+        os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{active_player + 1}", "resource_cards"),
+        os.path.join(repo.working_dir, "state", "game", "turn_phase"),
 
         os.path.join(repo.working_dir, "state", "initialization", "active_player"),
         os.path.join(repo.working_dir, "state", "initialization", "init_phase")
@@ -266,7 +281,7 @@ def init_phase_two(repo: git.Repo, hexagons: [HexagonTile], parent: git.Commit) 
 
     author = git.Actor(author_name, f"{author_name}@git.com")
     commit_id = repo.index.commit(
-        f"phase_one_{active_player}",
+        f"phase_two_player_{active_player}",
         [parent],
         True,
         author,

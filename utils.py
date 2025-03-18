@@ -14,7 +14,7 @@ from gloabl_definitions import (
     _number_of_players,
     _development_card_pool,
     _player_building_pool,
-    TEST_DIR,
+    TEST_DIR, _player_colour_reversed,
 )
 from repo_utils import init_repo, get_repo_author_gitdir
 
@@ -92,6 +92,14 @@ def update_initial_active_player(repo: git.Repo):
     old_val = int(get_initial_active_player(repo))
 
     new_val = (old_val + 1) % _number_of_players
+
+    with open(os.path.join(repo.working_dir, "state", "initialization", "active_player"), "w") as file:
+        file.write(f"{new_val}")
+
+def update_initial_active_player_rev(repo: git.Repo):
+    old_val = int(get_initial_active_player(repo))
+
+    new_val = (old_val - 1) % _number_of_players
 
     with open(os.path.join(repo.working_dir, "state", "initialization", "active_player"), "w") as file:
         file.write(f"{new_val}")
@@ -363,10 +371,10 @@ def get_all_settlement_points(repo: git.Repo, hexagons: [HexagonTile]) -> [Settl
 
 def get_all_available_settlement_points(repo: git.Repo, settlement_points: [Settlement_point], player_nr: int, hexagons: [HexagonTile]) -> [Road_point]:
     available_settlement_points = []
+    bandit = get_bandit(repo, hexagons)
 
     for point in settlement_points:
         # check for bandit
-        bandit = get_bandit(repo, hexagons)
         if bandit in point.coords:
             continue
         if point.owner == "bot":
@@ -452,7 +460,7 @@ def get_all_available_road_points(repo: git.Repo, road_points: [Road_point], set
         if point.owner == "bot":
             # check if there is a settlement adjacent to this road point
             for sp in settlement_points:
-                if is_adjacent_road_to_settlement(sp, point) and owned_by_player(sp, _player_colour[player_nr]):
+                if is_adjacent_road_to_settlement(sp, point) and sp.owner == _player_colour[player_nr]:
                     available_road_points.append(point)
                     break
     return available_road_points
@@ -467,7 +475,7 @@ def get_all_available_road_points_for_settlement(repo: git.Repo, road_points: [R
             continue
         if point.owner == "bot":
             # check if the settlement is adjacent to this road point
-            if is_adjacent_road_to_settlement(settlement_point, point) and owned_by_player(settlement_point, _player_colour[player_nr]):
+            if is_adjacent_road_to_settlement(settlement_point, point) and settlement_point.owner == _player_colour[player_nr]:
                 available_road_points.append(point)
     return available_road_points
 
@@ -488,22 +496,11 @@ def update_road_point(repo: git.Repo, index: int, owner: str):
     with open(path, "w") as f:
         f.write(old_file)
 
-def owned_by_player(settlement_point: Settlement_point, owner: str):
-    if settlement_point.owner == owner:
-        return True
-    else:
-        return False
-
 def is_adjacent_road_to_settlement(settlement_point: Settlement_point, road_point: Road_point) -> bool:
-    tile_one = list(settlement_point.coords)[0]
-    tile_two = list(settlement_point.coords)[1]
-    tile_three = list(settlement_point.coords)[2]
+    tile_one = list(road_point.coords)[0]
+    tile_two = list(road_point.coords)[1]
 
-    if tile_one in road_point.coords and tile_two in road_point.coords:
-        return True
-    elif tile_one in road_point.coords and tile_three in road_point.coords:
-        return True
-    elif tile_two in road_point.coords and tile_three in road_point.coords:
+    if tile_one in settlement_point.coords and tile_two in settlement_point.coords:
         return True
     else:
         return False
@@ -552,5 +549,28 @@ def get_settlement_point_index(sp: Settlement_point, settlement_points: [Settlem
 def get_road_point_index(rp: Road_point, road_points: [Road_point]) -> int:
     for i, point in enumerate(road_points):
         if rp.coords == point.coords:
+            return i
+    return -1
+
+def get_resources_from_hextile(tiles: [HexagonTile]) -> [int]:
+    resources = [0,0,0,0,0]
+
+    for tile in tiles:
+        if tile.resource == "Lumber":
+            resources[0] += 1
+        elif tile.resource == "Brick":
+            resources[1] += 1
+        elif tile.resource == "Wool":
+            resources[2] += 1
+        elif tile.resource == "Grain":
+            resources[3] += 1
+        elif tile.resource == "Ore":
+            resources[4] += 1
+    return resources
+
+
+def get_player_reverse_index(colour: str) -> int:
+    for i, player in enumerate(_player_colour_reversed[_number_of_players:]):
+        if player == colour:
             return i
     return -1

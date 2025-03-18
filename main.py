@@ -60,10 +60,13 @@ def main():
     terminated = False
     while not terminated:
         clock.tick(30)
-        initial_phase = get_initial_phase(repo)
-        turn_phase = get_turn_phase(repo)
-
         for event in pygame.event.get():
+            initial_phase = get_initial_phase(repo)
+            turn_phase = get_turn_phase(repo)
+            settlement_points = get_all_settlement_points(repo, hexagons)
+            road_points = get_all_road_points(repo, hexagons)
+            render_game_pieces(game, settlement_points, road_points)
+
             # actions that are always possible
             if event.type == pygame.QUIT:
                 terminated = True
@@ -77,8 +80,8 @@ def main():
                 if initial_phase == "phase_one":
                     latest_commit = init_phase_one(repo, hexagons, latest_commit)
                 # Initial Phase Two
-                #elif initial_phase == "phase_two":
-                    #latest_commit = init_phase_two(repo, hexagons, latest_commit)
+                elif initial_phase == "phase_two":
+                    latest_commit = init_phase_two(repo, hexagons, latest_commit)
 
             else:
                 # Dice Roll
@@ -97,11 +100,7 @@ def main():
                         pass
 
 
-        settlement_points = get_all_settlement_points(repo, hexagons)
-        road_points = get_all_road_points(repo, hexagons)
 
-
-        render_game_pieces(game, settlement_points, road_points)
 
     pygame.display.quit()
 
