@@ -574,3 +574,26 @@ def get_player_reverse_index(colour: str) -> int:
         if player == colour:
             return i
     return -1
+
+def get_resources_from_dice_roll(repo: git.Repo, hexagons: [HexagonTile], roll: int, player_nr: int) -> [int]:
+    settlement_points = get_all_settlement_points(repo, hexagons)
+    player_settlements = []
+    # filter settlement_points by player
+    for point in settlement_points:
+        if point.owner == _player_colour[player_nr]:
+            player_settlements.append(point)
+
+    resources = get_resources_from_hextile(player_settlements)
+
+    return resources
+
+def get_sum_of_all_resources(resources: [int]) -> int:
+    res_sum = 0
+    for resource in resources:
+        res_sum += resource
+    return res_sum
+
+def negate_int_arr(resources: [int]) -> [int]:
+    for i, resource in enumerate(resources):
+        resources[i] = -resources
+    return resources

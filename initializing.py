@@ -7,7 +7,11 @@ from gloabl_definitions import (
     _development_card_pool_str,
     _resource_card_pool_str,
     Settlement_point,
-    Road_point, _player_colour, HexagonTile, _number_of_players, _player_colour_reversed
+    Road_point,
+    _player_colour,
+    HexagonTile,
+    _number_of_players,
+    _player_colour_reversed
 )
 from repo_utils import get_repo_author_gitdir
 from utils import (
@@ -28,7 +32,9 @@ from utils import (
     get_resources_from_hextile,
     update_player_hand,
     update_turn_phase,
-    get_player_reverse_index, update_initial_active_player_rev,
+    update_initial_active_player_rev,
+    update_bank_resources,
+    negate_int_arr,
 )
 
 
@@ -253,6 +259,7 @@ def init_phase_two(repo: git.Repo, hexagons: [HexagonTile], parent: git.Commit) 
     # get resources from second village
     resources = get_resources_from_hextile(sp.coords)
     update_player_hand(repo, "resource_cards", active_player, resources)
+    update_bank_resources(repo, negate_int_arr(resources))
 
     # phase is over
     if active_player == 0:
@@ -268,6 +275,7 @@ def init_phase_two(repo: git.Repo, hexagons: [HexagonTile], parent: git.Commit) 
         os.path.join(repo.working_dir, "state", "game", "road_points"),
         os.path.join(repo.working_dir, "state", "game", "player_buildings", f"player_{active_player + 1}"),
         os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{active_player + 1}", "resource_cards"),
+        os.path.join(repo.working_dir, "state", "game", "bank", "resource_cards"),
         os.path.join(repo.working_dir, "state", "game", "turn_phase"),
 
         os.path.join(repo.working_dir, "state", "initialization", "active_player"),

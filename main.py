@@ -12,6 +12,7 @@ from UI import (
     init_road_points,
     render_game_pieces
 )
+from dice_roll import roll_dice
 from gloabl_definitions import (
     _screen_width,
     _screen_height, ROOT_DIR,
@@ -85,7 +86,8 @@ def main():
 
             else:
                 # Dice Roll
-
+                #if turn_phase == "dice_roll":
+                    #latest_commit = roll_dice(repo, hexagons, latest_commit)
                 # Trading
                 # No trade
                 if event.type == KEYUP:
