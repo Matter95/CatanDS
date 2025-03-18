@@ -17,6 +17,7 @@ pygame.display.init()
 _player_colour = ["Red", "Blue", "Green", "Orange"]
 _player_colour_reversed = ["Orange", "Green", "Blue", "Red"]
 _screen_width, _screen_height = pygame.display.get_desktop_sizes()[0]
+_delta = 0.25
 _hexagon_radius = 100
 _hex_num_width = 6
 _hex_num_height = 7
@@ -57,12 +58,12 @@ class HexagonTile:
         half_radius = self.radius / 2
         minimal_radius = self.minimal_radius
         return [
-            (round(x, 1), round(y, 1)),
-            (round(x - minimal_radius, 1), round(y + half_radius, 1)),
-            (round(x - minimal_radius, 1), round(y + 3 * half_radius, 1)),
-            (round(x, 1), round(y + 2 * self.radius, 1)),
-            (round(x + minimal_radius, 1), round(y + 3 * half_radius, 1)),
-            (round(x + minimal_radius, 1), round(y + half_radius, 1)),
+            (round(x, 2), round(y, 2)),
+            (round(x - minimal_radius, 2), round(y + half_radius, 2)),
+            (round(x - minimal_radius, 2), round(y + 3 * half_radius, 2)),
+            (round(x, 2), round(y + 2 * self.radius, 2)),
+            (round(x + minimal_radius, 2), round(y + 3 * half_radius, 2)),
+            (round(x + minimal_radius, 2), round(y + half_radius, 2)),
         ]
 
     def compute_neighbours(self, hexagons: List[HexagonTile]) -> List[HexagonTile]:
@@ -234,7 +235,7 @@ class Settlement_point:
         tile_three = tiles[2]
 
         for vertex in tile_one.vertices:
-            if vertex in tile_two.vertices and vertex in tile_three.vertices:
+            if vertex_in_set(vertex, tile_two.vertices) and vertex_in_set(vertex, tile_three.vertices):
                 self.xy_coords = vertex
 
     def render(self, screen) -> None:
@@ -259,6 +260,16 @@ class Settlement_point:
     def __str__(self):
         return f"{self.coords_to_string()},{self.owner},{self.settlement_type}"
 
+
+def vertex_in_set(v, vertices):
+    for vertex in vertices:
+        if (
+                v[0] - _delta <= vertex[0] <= v[0] + _delta
+                and v[1] - _delta <= vertex[1] <= v[1] + _delta
+        ):
+            return True
+    return False
+
 class Road_point:
     coords: set[HexagonTile]
     owner: str
@@ -276,7 +287,7 @@ class Road_point:
         points = []
 
         for vertex in tile_one.vertices:
-            if vertex in tile_two.vertices:
+            if vertex_in_set(vertex, tile_two.vertices):
                 points.append(vertex)
 
         self.xy_coords = (points[0][0] + points[1][0]) / 2, (points[0][1] + points[1][1]) / 2
