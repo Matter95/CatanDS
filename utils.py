@@ -1,4 +1,5 @@
 import os
+from random import randrange
 from typing import List
 
 import git
@@ -7,16 +8,16 @@ from gloabl_definitions import (
     Settlement_point,
     HexagonTile,
     Road_point,
-    _player_colour,
+    _player_colour_2_players,
     ROOT_DIR,
     REMOTE_DIR,
     _resource_card_pool,
     _number_of_players,
     _development_card_pool,
     _player_building_pool,
-    TEST_DIR, _player_colour_reversed,
+    TEST_DIR, _player_colour_reversed_2_players, _cost_village, _cost_city, _cost_road, _cost_dev_card,
 )
-from repo_utils import init_repo, get_repo_author_gitdir
+from repo_utils import init_repo
 
 
 def create_folder_structure(repo: git.Repo, n_players: int):
@@ -88,6 +89,11 @@ def get_initial_active_player(repo: git.Repo):
         line = file.readline()
     return int(line)
 
+def get_player_index(colour: str):
+    for i, c in enumerate(_player_colour_2_players):
+        if c == colour:
+            return i
+
 def update_initial_active_player(repo: git.Repo):
     old_val = int(get_initial_active_player(repo))
 
@@ -135,8 +141,6 @@ def update_turn_phase(repo: git.Repo):
 
 # player functions
 def get_player_hand(repo: git.Repo, hand_type: str, player_nr: int) -> List[int] | None:
-
-
     if hand_type == "resource_cards":
         vals = [0, 0, 0, 0, 0]
     elif hand_type == "bought_cards":
@@ -368,8 +372,19 @@ def get_all_settlement_points(repo: git.Repo, hexagons: [HexagonTile]) -> [Settl
             settlement_points.append(Settlement_point({hexagons[int(line[0])], hexagons[int(line[1])], hexagons[int(line[2])]}, line[3], line[4].replace("\n","")))
     return settlement_points
 
+def get_all_hexagon_tiles_with_nr(repo: git.Repo, hexagons: [HexagonTile], owner: str, roll: int) -> [HexagonTile]:
+    settlement_points = get_all_settlement_points(repo, hexagons)
+    viable = []
+    for point in settlement_points:
+        if point.owner == owner:
+            for hexagon in point.coords:
+                if hexagon.number == roll:
+                    viable.append(hexagon)
 
-def get_all_available_settlement_points(repo: git.Repo, settlement_points: [Settlement_point], player_nr: int, hexagons: [HexagonTile]) -> [Road_point]:
+    return viable
+
+
+def get_all_available_settlement_points(repo: git.Repo, settlement_points: [Settlement_point], player_nr: int, hexagons: [HexagonTile]) -> [Settlement_point]:
     available_settlement_points = []
     bandit = get_bandit(repo, hexagons)
 
@@ -395,7 +410,7 @@ def get_settlement_point(repo: git.Repo, index: int, hexagons: [HexagonTile]):
             line = file.readline()
         line = line.split(",")
 
-    return Settlement_point({hexagons[int(line[0])], hexagons[int(line[1])], hexagons[int(line[2])]}, line[3], line[4].replace("\n",""))
+    return Settlement_point(index, {hexagons[int(line[0])], hexagons[int(line[1])], hexagons[int(line[2])]}, line[3], line[4].replace("\n",""))
 
 def get_settlement_point_raw(repo: git.Repo, index: int):
     path = os.path.join(repo.working_dir, "state", "game", "settlement_points")
@@ -408,8 +423,8 @@ def update_settlement_point(repo: git.Repo, index: int, owner: str, settlement_t
     path = os.path.join(repo.working_dir, "state", "game", "settlement_points")
     raw_line = get_settlement_point_raw(repo, index)
     new_line = raw_line.replace("\n","").split(",")
-    new_line[3] = owner
-    new_line[4] = settlement_type
+    new_line[4] = owner
+    new_line[5] = settlement_type
     new_line = str.join(",", new_line)
     new_line += "\n"
     old_file = ""
@@ -428,7 +443,7 @@ def get_all_road_points(repo: git.Repo, hexagons: [HexagonTile]) -> [Road_point]
     with open(path, "r") as file:
         for i, line in enumerate(file):
             line = line.split(",")
-            road_points.append(Road_point({hexagons[int(line[0])], hexagons[int(line[1])]}, line[2].replace("\n","")))
+            road_points.append(Road_point(i, {hexagons[int(line[0])], hexagons[int(line[1])]}, line[2].replace("\n","")))
     return road_points
 
 def get_road_point(repo: git.Repo, index: int, hexagons: [HexagonTile]):
@@ -438,7 +453,7 @@ def get_road_point(repo: git.Repo, index: int, hexagons: [HexagonTile]):
             line = file.readline()
         line = line.split(",")
 
-    return Road_point({hexagons[int(line[0])], hexagons[int(line[1])]}, line[2].replace("\n",""))
+    return Road_point(index, {hexagons[int(line[0])], hexagons[int(line[1])]}, line[2].replace("\n",""))
 
 
 def get_road_point_raw(repo: git.Repo, index: int) -> str:
@@ -460,7 +475,7 @@ def get_all_available_road_points(repo: git.Repo, road_points: [Road_point], set
         if point.owner == "bot":
             # check if there is a settlement adjacent to this road point
             for sp in settlement_points:
-                if is_adjacent_road_to_settlement(sp, point) and sp.owner == _player_colour[player_nr]:
+                if is_adjacent_road_to_settlement(sp, point) and sp.owner == _player_colour_2_players[player_nr]:
                     available_road_points.append(point)
                     break
     return available_road_points
@@ -475,7 +490,7 @@ def get_all_available_road_points_for_settlement(repo: git.Repo, road_points: [R
             continue
         if point.owner == "bot":
             # check if the settlement is adjacent to this road point
-            if is_adjacent_road_to_settlement(settlement_point, point) and settlement_point.owner == _player_colour[player_nr]:
+            if is_adjacent_road_to_settlement(settlement_point, point) and settlement_point.owner == _player_colour_2_players[player_nr]:
                 available_road_points.append(point)
     return available_road_points
 
@@ -484,7 +499,7 @@ def update_road_point(repo: git.Repo, index: int, owner: str):
     path = os.path.join(repo.working_dir, "state", "game", "road_points")
     raw_line = get_road_point_raw(repo, index)
     new_line = raw_line.replace("\n","").split(",")
-    new_line[2] = owner
+    new_line[3] = owner
     new_line = str.join(",", new_line)
     new_line += "\n"
     old_file = ""
@@ -505,6 +520,15 @@ def is_adjacent_road_to_settlement(settlement_point: Settlement_point, road_poin
     else:
         return False
 
+def is_adjacent_road(road_point_one: Settlement_point, road_point_two: Road_point) -> bool:
+    tile_one = list(road_point_one.coords)[0]
+    tile_two = list(road_point_one.coords)[1]
+
+    if tile_one in road_point_two.coords or tile_two in road_point_two.coords:
+        return True
+    else:
+        return False
+
 def is_adjacent_settlement(settlement_point: Settlement_point, neighbour: Settlement_point) -> bool:
     tile_one = list(settlement_point.coords)[0]
     tile_two = list(settlement_point.coords)[1]
@@ -520,18 +544,9 @@ def is_adjacent_settlement(settlement_point: Settlement_point, neighbour: Settle
         return False
 
 
-def create_git_dirs() -> [git.repo]:
-    alice = init_repo(ROOT_DIR, "Catan_Alice", "alice", "alice@example.com", False)
-    bob = init_repo(REMOTE_DIR, "Catan_Bob", "bob", "bob@example.com", False)
-
-    name = get_repo_author_gitdir(bob.git_dir)
-    alice.create_remote(name, bob.git_dir)
-    print(f"created Remote {name} for {get_repo_author_gitdir(alice.git_dir)}")
-
-    name = get_repo_author_gitdir(alice.git_dir)
-    bob.create_remote(name, alice.git_dir)
-    print(f"created Remote {name} for {get_repo_author_gitdir(bob.git_dir)}")
-    return alice, bob
+def create_git_dir() -> git.repo:
+    alice = init_repo(ROOT_DIR, "Catan", "alice", "alice@example.com", False)
+    return alice
 
 
 def create_git_dir_test() -> [git.repo]:
@@ -570,20 +585,14 @@ def get_resources_from_hextile(tiles: [HexagonTile]) -> [int]:
 
 
 def get_player_reverse_index(colour: str) -> int:
-    for i, player in enumerate(_player_colour_reversed[_number_of_players:]):
+    for i, player in enumerate(_player_colour_reversed_2_players[_number_of_players:]):
         if player == colour:
             return i
     return -1
 
 def get_resources_from_dice_roll(repo: git.Repo, hexagons: [HexagonTile], roll: int, player_nr: int) -> [int]:
-    settlement_points = get_all_settlement_points(repo, hexagons)
-    player_settlements = []
-    # filter settlement_points by player
-    for point in settlement_points:
-        if point.owner == _player_colour[player_nr]:
-            player_settlements.append(point)
-
-    resources = get_resources_from_hextile(player_settlements)
+    viable_hexagons = get_all_hexagon_tiles_with_nr(repo, hexagons, repo.active_branch.name, roll)
+    resources = get_resources_from_hextile(viable_hexagons)
 
     return resources
 
@@ -595,5 +604,178 @@ def get_sum_of_all_resources(resources: [int]) -> int:
 
 def negate_int_arr(resources: [int]) -> [int]:
     for i, resource in enumerate(resources):
-        resources[i] = -resources
+        resources[i] = -resource
     return resources
+
+def randomly_choose_loss(loss, resources):
+    diff = [0, 0, 0, 0, 0]
+    i = 0
+    # choose cards to loose
+    while i < loss:
+        index = randrange(0, 5)
+        if resources[index] + diff[index] - 1 > 0:
+            diff[index] -= 1
+            i += 1
+    return diff
+
+
+def get_diff_between_arrays(arr_1: [int], arr_2: [int]):
+    if len(arr_1) != len(arr_2):
+        print("Array length not equal")
+        return
+    else:
+        diff = []
+        for i in range(len(arr_1)):
+            diff.append(arr_1[i] - arr_2[i])
+        return diff
+
+def get_all_settlements_of_player(settlement_points: [Settlement_point], player_nr: int) -> [Settlement_point]:
+    owned = []
+    for point in settlement_points:
+        if point.owner == _player_colour_2_players[player_nr]:
+            owned.append(point)
+    return owned
+
+
+def get_all_roads_of_player(road_points: [Road_point], player_nr: int) -> [Road_point]:
+    owned = []
+    for point in road_points:
+        if point.owner == _player_colour_2_players[player_nr]:
+            owned.append(point)
+    return owned
+
+
+def get_all_viable_settlement_points(settlement_points: [Settlement_point], road_points: [Road_point], player_nr: int, bandit: HexagonTile) -> [Settlement_point]:
+    owned_settlements = get_all_settlements_of_player(settlement_points, player_nr)
+    owned_roads = get_all_roads_of_player(road_points, player_nr)
+
+    owned_hexes = []
+
+    # add all hexes with a village or road adjacent to it
+    for point in owned_settlements:
+        for coord in point.coords:
+            if coord not in owned_hexes:
+                owned_hexes.append(coord)
+    for point in owned_roads:
+        for coord in point.coords:
+            if coord not in owned_hexes:
+                owned_hexes.append(coord)
+
+    available_settlement_points = []
+    for point in settlement_points:
+        # check for bandit
+        if bandit in point.coords:
+            continue
+        # needs to be in one of the owned hexes
+        for coord in point.coords:
+            if coord not in owned_hexes:
+                continue
+
+        if point.owner == "bot":
+            # check that there are no other settlements neighbouring this point
+            buildable = True
+            has_road = False
+            for neighbour in settlement_points:
+                if is_adjacent_settlement(point, neighbour) and neighbour.owner != "bot":
+                    buildable = False
+            # check if there is an adjacent road
+            for road in owned_roads:
+                if is_adjacent_road_to_settlement(point, road):
+                    has_road = True
+                    break
+            if buildable and has_road:
+                available_settlement_points.append(point)
+    return available_settlement_points
+
+
+def get_all_viable_road_points(settlement_points: [Settlement_point], road_points: [Road_point], player_nr: int, bandit: HexagonTile) -> [Road_point]:
+    owned_settlements = get_all_settlements_of_player(settlement_points, player_nr)
+    owned_roads = get_all_roads_of_player(road_points, player_nr)
+
+    owned_hexes = []
+
+    # add all hexes with a village or road adjacent to it
+    for point in owned_settlements:
+        for coord in point.coords:
+            if coord not in owned_hexes:
+                owned_hexes.append(coord)
+    for point in owned_roads:
+        for coord in point.coords:
+            if coord not in owned_hexes:
+                owned_hexes.append(coord)
+
+    available_road_points = []
+    for point in road_points:
+        # check for bandit
+        if bandit in point.coords:
+            continue
+        # needs to be in one of the owned hexes
+        for coord in point.coords:
+            if coord not in owned_hexes:
+                continue
+
+        if point.owner == "bot":
+            # check that there are no other settlements neighbouring this point
+            has_settlement = False
+            has_road = False
+            for neighbour in owned_roads:
+                if is_adjacent_road(point, neighbour) and neighbour.owner == _player_colour_2_players[player_nr]:
+                    has_road = True
+            # check if there is an adjacent road
+            for settlement in owned_settlements:
+                if has_road:
+                    break
+                if is_adjacent_road_to_settlement(settlement, point):
+                    has_settlement = True
+                    break
+            if has_road or has_settlement:
+                available_road_points.append(point)
+    return available_road_points
+
+
+def can_build_type(repo, resources: [int], building_type: str, player_nr: int) -> [bool]:
+    can_build = True
+
+    # check if the player has villages to spare
+    available = get_player_buildings_type(repo, building_type, player_nr)
+    if available == 0:
+        can_build = False
+
+    if building_type == "Village":
+        cost = _cost_village
+    elif building_type == "City":
+        # check if there are villages to upgrade
+        villages = get_player_buildings_type(repo, "Village", player_nr)
+        if villages == 0:
+            can_build = False
+        cost = _cost_city
+    elif building_type == "Road":
+        cost = _cost_road
+    else:
+        cost = [20,20,20,20,20]
+
+    for i in range(len(resources)):
+        if resources[i] < cost[i]:
+            can_build = False
+            break
+    return can_build
+
+
+def can_buy_dev_card(resources: [int]) -> [bool]:
+    can_buy = True
+    for i in range(len(resources)):
+        if resources[i] < _cost_dev_card[i]:
+            can_build = False
+            break
+    return can_buy
+
+
+def can_build_something(repo: git.Repo, resources: [int], local_player: int) -> bool:
+    if (
+        can_build_type(repo, resources, "City", local_player)
+        or can_build_type(repo, resources, "Village", local_player)
+        or can_build_type(repo, resources, "Road", local_player)
+    ):
+        return True
+    else:
+        return False

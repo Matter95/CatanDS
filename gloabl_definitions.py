@@ -4,7 +4,6 @@ import os
 from dataclasses import dataclass
 from typing import Tuple, List
 import pygame
-from git import repo
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 REMOTE_DIR = os.path.join(ROOT_DIR, "Remote")
@@ -14,8 +13,10 @@ TEST_DIR = os.path.join(ROOT_DIR, "Tests")
 pygame.init()
 pygame.font.init()
 pygame.display.init()
-_player_colour = ["Red", "Blue", "Green", "Orange"]
-_player_colour_reversed = ["Orange", "Green", "Blue", "Red"]
+_player_colour_2_players = ["Red", "Blue"]
+_player_colour_4_players = ["Red", "Blue", "Green", "Orange"]
+_player_colour_reversed_2_players = ["Blue", "Red"]
+_player_colour_reversed_4_players = ["Orange", "Green", "Blue", "Red"]
 _screen_width, _screen_height = pygame.display.get_desktop_sizes()[0]
 _delta = 0.25
 _hexagon_radius = 100
@@ -34,6 +35,11 @@ _resource_card_pool_str: str = "19,19,19,19,19"
 _development_card_pool: Tuple[int, ...] = (2, 2, 2, 14, 5)
 _development_card_pool_str: str = "2,2,2,14,5"
 _number_of_players = 2
+
+_cost_village = (1,1,1,1,0)
+_cost_city = (0,0,0,2,3)
+_cost_dev_card = (0,0,1,1,1)
+_cost_road = (1,1,0,0,0)
 
 @dataclass
 class HexagonTile:
@@ -189,7 +195,7 @@ def get_map_tile(c: str) -> MapTile | None:
 
 class Wharf:
     coords:[MapTile]
-    wharf_type: str
+    type: str
 
     def __init__(self, t1: MapTile, t2: MapTile, wharf_type: str):
         self.coords = [t1, t2]
@@ -215,12 +221,14 @@ _player_building_pool: Tuple[int, ...] = (15, 5, 4)
 _player_building_pool_str: str = "15,5,4"
 
 class Settlement_point:
+    index: int
     coords: set[HexagonTile]
     owner: str
     settlement_type: str
     xy_coords: (float, float)
 
-    def __init__(self, coords: set[HexagonTile], owner: str, settlement_type: str):
+    def __init__(self, index: int, coords: set[HexagonTile], owner: str, settlement_type: str):
+        self.index = index
         self.coords = coords
         self.owner = owner
         if settlement_type in _settlement_type:
@@ -271,12 +279,14 @@ def vertex_in_set(v, vertices):
     return False
 
 class Road_point:
+    index: int
     coords: set[HexagonTile]
     owner: str
     xy_coords: (float, float)
     angle: int
 
-    def __init__(self, coords: set[HexagonTile], owner: str):
+    def __init__(self, index:int, coords: set[HexagonTile], owner: str):
+        self.index = index
         self.coords = coords
         self.owner = owner
 

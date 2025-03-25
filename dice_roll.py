@@ -1,123 +1,219 @@
 import os
-from math import ceil
+from math import ceil, floor
 from random import randrange
 
 import git
 
-from gloabl_definitions import HexagonTile
-from repo_utils import get_repo_author_gitdir
-from utils import get_active_player, get_resources_from_dice_roll, get_player_hand, get_sum_of_all_resources, \
-    update_bank_resources, update_player_hand, negate_int_arr
+from gloabl_definitions import HexagonTile, _player_colour_2_players, _number_of_players
+from repo_utils import get_all_loss_references
+from utils import (
+    get_active_player,
+    get_resources_from_dice_roll,
+    get_player_hand,
+    get_sum_of_all_resources,
+    update_bank_resources,
+    update_player_hand,
+    negate_int_arr,
+    get_player_index,
+    update_turn_phase,
+    randomly_choose_loss, get_bank_resources, get_diff_between_arrays
+)
 
-
-def roll_dice(repo: git.Repo, hexagons: [HexagonTile], parent: git.Commit) -> git.Commit:
-    author_name = get_repo_author_gitdir(repo.git_dir)
+def roll_dice(repo: git.Repo, hexagons: [HexagonTile]):
+    author_name = repo.active_branch.name
     author = git.Actor(author_name, f"{author_name}@git.com")
     active_player = get_active_player(repo)
+    local_player = get_player_index(repo.active_branch.name)
+    # latest commit
+    parent = repo.head.commit
+    has_commit = False
 
-    # we already rolled the dice and have a result
-    if parent.message.__contains__("result_"):
-        index = parent.message.find("result_")
-        roll = int(parent.message[index + len("result_"):])
+    # check if references for loss or empty were created for this player
+    for ref in repo.references:
+        if ref.name.__contains__(f"loss_player_{local_player + 1}"):
+            has_commit = True
 
-        if roll == 7:
-            # no resource gain this round, check if player has more than 7 cards
-            resources = get_player_hand(repo, "resource_cards", active_player)
-            cards = get_sum_of_all_resources(resources)
+    # we already rolled the dice and have a result or are waiting for players to choose their loss
+    if (
+        parent.message.__contains__("result_")
+        or has_commit
+    ):
+        # check if all players have committed to a loss that need to
+        parents = []
+        if has_commit:
+            if active_player == local_player:
+                # check if the current player has committed a loss or empty commit
+                children = get_all_loss_references(repo, repo.head.commit)
 
-            # loose half the cards (ceil(cards/2))
-            if cards > 7:
-                loss = ceil(cards / 2)
+                # if active player, check if all players committed a loss or empty commit
+                if len(children) == _number_of_players:
+                    files = []
 
-                diff = [0,0,0,0,0]
+                    diffs = []
 
-                # choose cards to loose
-                for i in range(0, loss):
-                    index = randrange(0, 5)
-                    if resources[index] - diff[index] - 1 > 0:
-                        diff[index] -= 1
+                    current_branch = repo.active_branch.name
+                    # merge all commits
+                    for child in children:
+                        # nothing to merge
+                        if child.message.__contains__(f"empty"):
+                            pass
+                        # hands are mutex, bank needs to be merged
+                        else:
+                            # get player number of the commit
+                            player_nr = child.message
+                            index = player_nr.find("player_")
+                            player_nr = int(player_nr[index + len("player_"):index + len("player_") + 1])
 
-                update_player_hand(repo, "resource_cards", active_player, diff)
-                update_bank_resources(repo, negate_int_arr(diff))
+                            # checkout the branch
+                            repo.git.checkout(f"loss_player_{player_nr}")
 
-                files = [
-                    os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{active_player + 1}",
-                                 "resource_cards"),
-                    os.path.join(repo.working_dir, "state", "game", "bank", "resource_cards"),
-                ]
+                            # get the player's hand and the changed bank
+                            new_resources = get_player_hand(repo, "resource_cards", player_nr - 1)
 
-                # add files to index
-                for file_path in files:
-                    repo.index.add(file_path)
-                repo.index.write_tree()
+                            # add player hand to changed files
+                            files.append(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{player_nr}"))
 
-                author = git.Actor(author_name, f"{author_name}@git.com")
-                commit_id = repo.index.commit(
-                    f"roll_dice_player_{active_player}_loss",
-                    [parent],
-                    True,
-                    author,
-                    author,
-                )
+                            # return to active player branch
+                            repo.git.checkout(current_branch)
 
-                return commit_id
+                            old_resources = get_player_hand(repo, "resource_cards", player_nr - 1)
 
-            # everything stays the same
-            else:
-                # empty commit
-                commit_id = repo.index.commit(
-                    f"roll_dice_player_{active_player}_empty",
-                    [parent],
-                    True,
-                    author,
-                    author,
-                )
-                return commit_id
+                            diffs.append((player_nr - 1, get_diff_between_arrays(new_resources, old_resources)))
+
+                    bank_diff = [0,0,0,0,0]
+
+                    for player_nr, diff in diffs:
+                        update_player_hand(repo, "resource_cards", player_nr, diff)
+
+                        for i in range(len(diff)):
+                            bank_diff[i] += abs(diff[i])
+                    update_bank_resources(repo, bank_diff)
+
+                    update_turn_phase(repo)
+                    files.append(os.path.join(repo.working_dir, "state", "game", "bank", "resource_cards"))
+                    files.append(os.path.join(repo.working_dir, "state", "game", "turn_phase"))
+
+                    # add files to index
+                    for file_path in files:
+                        repo.index.add(file_path)
+                    repo.index.write_tree()
+
+                    # empty commit
+                    repo.index.commit(
+                        f"roll_dice_merge",
+                        children,
+                        True,
+                        author,
+                        author,
+                    )
+
+                    # delete references
+                    for i in range(_number_of_players):
+                        repo.delete_head(f"loss_player_{i + 1}", force=True)
+
         else:
-            gain = get_resources_from_dice_roll(repo, hexagons, roll, active_player)
+            index = parent.message.find("result_")
+            roll = int(parent.message[index + len("result_"):])
+            if roll == 7:
+                # no resource gain this round, check if player has more than 7 cards
+                resources = get_player_hand(repo, "resource_cards", local_player)
+                cards = get_sum_of_all_resources(resources)
 
-            files = [
-                os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{active_player + 1}",
-                             "resource_cards"),
-                os.path.join(repo.working_dir, "state", "game", "bank", "resource_cards"),
-            ]
+                # loose half the cards (ceil(cards/2))
+                if cards > 7:
+                    loose_cards(repo, cards, resources, local_player, repo.head.commit)
 
-            # add files to index
-            for file_path in files:
-                repo.index.add(file_path)
-            repo.index.write_tree()
+                # everything stays the same
+                else:
+                    current_branch = repo.active_branch.name
+                    # checkout the branch
+                    repo.git.checkout("-b", f"loss_player_{local_player + 1}")
 
-            author = git.Actor(author_name, f"{author_name}@git.com")
-            commit_id = repo.index.commit(
-                f"roll_dice_player_{active_player}_gain",
+                    # empty commit
+                    commit = repo.index.commit(
+                        f"roll_dice_player_{local_player + 1}_empty",
+                        [parent],
+                        True,
+                        author,
+                        author,
+                    )
+
+                    repo.git.checkout(current_branch)
+            else:
+                if active_player == local_player:
+                    files = []
+                    for player in _player_colour_2_players:
+                        player_index = get_player_index(player)
+                        gain = get_resources_from_dice_roll(repo, hexagons, roll, player_index)
+                        update_player_hand(repo, "resource_cards", player_index, gain)
+                        update_bank_resources(repo, negate_int_arr(gain))
+
+                        if gain != [0,0,0,0,0]:
+                            files.append(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{player_index + 1}",
+                                         "resource_cards"))
+
+                    files.append(os.path.join(repo.working_dir, "state", "game", "bank", "resource_cards"))
+                    files.append(os.path.join(repo.working_dir, "state", "game", "turn_phase"))
+                    update_turn_phase(repo)
+
+                    # add files to index
+                    for file_path in files:
+                        repo.index.add(file_path)
+                    repo.index.write_tree()
+
+                    author = git.Actor(author_name, f"{author_name}@git.com")
+                    repo.index.commit(
+                        f"roll_dice_player_{local_player + 1}_gain",
+                        [parent],
+                        True,
+                        author,
+                        author,
+                    )
+    else:
+        local_player = get_player_index(repo.active_branch.name)
+
+        if active_player == local_player:
+            result = randrange(2, 12)
+
+            # send dice result to all other players
+            repo.index.commit(
+                f"roll_dice_player_{local_player + 1}_result_{result}",
                 [parent],
                 True,
                 author,
                 author,
             )
-    # we need merge all gains, loss choices or empty commits
-    elif parent.message.__contains__("_gain") or parent.message.__contains__("_empty") or parent.message.__contains__("_loss"):
-        parents = []
-        if parent.message.__contains__("_gain"):
-            for ref in repo.references:
-                if ref.commit.message.__contains__("_gain"):
-                    parents.append(ref.commit)
-        else:
-            for ref in repo.references:
-                if ref.commit.message.__contains__("_loss") or ref.commit.message.__contains__("_empty"):
-                    parents.append(ref.commit)
 
-    else:
-        result = randrange(2,12)
+def loose_cards(repo: git.Repo, cards: int, resources: [int], local_player: int, parent):
+    loss = floor(cards / 2)
+    diff = randomly_choose_loss(loss, resources)
 
-        # send dice result to all other players
-        commit_id = repo.index.commit(
-            f"roll_dice_player_{active_player}_result_{result}",
-            [parent],
-            True,
-            author,
-            author,
-        )
+    current_branch = repo.active_branch.name
+    # checkout the branch
+    repo.git.checkout("-b", f"loss_player_{local_player + 1}")
 
-    # does not change head
-    return commit_id
+    update_player_hand(repo, "resource_cards", local_player, diff)
+    update_bank_resources(repo, negate_int_arr(diff))
+
+    files = [
+        os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{local_player + 1}",
+                     "resource_cards"),
+        os.path.join(repo.working_dir, "state", "game", "bank", "resource_cards"),
+    ]
+
+    # add files to index
+    for file_path in files:
+        repo.index.add(file_path)
+    repo.index.write_tree()
+
+    author_name = repo.active_branch.name
+    author = git.Actor(author_name, f"{author_name}@git.com")
+    commit = repo.index.commit(
+        f"roll_dice_player_{local_player + 1}_loss",
+        [parent],
+        True,
+        author,
+        author,
+    )
+    # switch back
+    repo.git.checkout(current_branch)

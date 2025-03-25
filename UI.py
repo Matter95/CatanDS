@@ -10,11 +10,10 @@ from gloabl_definitions import (
     _left_most_xy_coords,
     _hexagon_radius,
     _hex_num_width,
-    _hex_num_height, HexagonTile, Road_point, Settlement_point, ROOT_DIR, REMOTE_DIR, _player_colour
+    _hex_num_height, HexagonTile, Road_point, Settlement_point, ROOT_DIR, REMOTE_DIR, _player_colour_2_players
 )
 import pygame
 import pygame.gfxdraw
-from repo_utils import init_repo, get_repo_author_gitdir
 
 """
 Taken and modified from
@@ -71,7 +70,7 @@ def init_hexagons(num_x=_hex_num_width, num_y=_hex_num_height) -> List[HexagonTi
 def init_settlement_points(hexagons: [HexagonTile]) -> List[Settlement_point]:
     """Creates a list of all settlement points."""
     settlement_points = []
-
+    index = 0
     for tile_one in hexagons:
         for tile_two in hexagons:
             if tile_two == tile_one:
@@ -91,12 +90,14 @@ def init_settlement_points(hexagons: [HexagonTile]) -> List[Settlement_point]:
                             if tile_one in point.coords and tile_two in point.coords and tile_three in point.coords:
                                 exists = True
                         if not exists:
-                            settlement_points.append(Settlement_point({tile_one, tile_two, tile_three}, "bot", "bot"))
+                            settlement_points.append(Settlement_point(index, {tile_one, tile_two, tile_three}, "bot", "bot"))
+                            index += 1
     return settlement_points
 
 def init_road_points(hexagons: [HexagonTile]) -> List[Road_point]:
     """Creates a list of all settlement points."""
     road_points = []
+    index = 0
 
     for tile_one in hexagons:
         for tile_two in hexagons:
@@ -111,7 +112,8 @@ def init_road_points(hexagons: [HexagonTile]) -> List[Road_point]:
                         if tile_one in point.coords and tile_two in point.coords:
                             exists = True
                     if not exists:
-                        road_points.append(Road_point({tile_one, tile_two}, "bot"))
+                        road_points.append(Road_point(index, {tile_one, tile_two}, "bot"))
+                        index += 1
     return road_points
 
 def render_static(screen, hexagons):
@@ -124,7 +126,7 @@ def render_transparent(screen, settlement_points: [Settlement_point], road_point
     for settlement_point in settlement_points:
         settlement_point.render(screen)
     for road_point in road_points:
-        road_point.render_transparent(screen, _player_colour[player_nr])
+        road_point.render_transparent(screen, _player_colour_2_players[player_nr])
     pygame.display.flip()
 
 def render_game_pieces(screen, settlement_points: [Settlement_point], road_points: [Road_point]):
