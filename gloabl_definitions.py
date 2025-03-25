@@ -194,23 +194,23 @@ def get_map_tile(c: str) -> MapTile | None:
     return None
 
 class Wharf:
-    coords:[MapTile]
+    coords:[int]
     type: str
 
-    def __init__(self, t1: MapTile, t2: MapTile, wharf_type: str):
+    def __init__(self, t1: int, t2: int, wharf_type: str):
         self.coords = [t1, t2]
-        self.resource = wharf_type
+        self.type = wharf_type
 
 Wharfs: [Wharf] = [
-    Wharf(Map[1], Map[9], "3:1"),
-    Wharf(Map[3], Map[10], "Grain"),
-    Wharf(Map[12], Map[18], "Ore"),
-    Wharf(Map[14], Map[15], "Lumber"),
-    Wharf(Map[26], Map[27], "3:1"),
-    Wharf(Map[28], Map[29], "Brick"),
-    Wharf(Map[32], Map[40], "Wool"),
-    Wharf(Map[37], Map[43], "3:1"),
-    Wharf(Map[38], Map[45], "3:1"),
+    Wharf(1, 9, "3:1"),
+    Wharf(3, 10, "Grain"),
+    Wharf(12, 18, "Ore"),
+    Wharf(14, 15, "Lumber"),
+    Wharf(26, 27, "3:1"),
+    Wharf(28, 29, "Brick"),
+    Wharf(32, 40, "Wool"),
+    Wharf(37, 43, "3:1"),
+    Wharf(38, 45, "3:1"),
 ]
 
 _settlement_type: Tuple[str, ...] = ("Village", "City")
@@ -224,7 +224,7 @@ class Settlement_point:
     index: int
     coords: set[HexagonTile]
     owner: str
-    settlement_type: str
+    type: str
     xy_coords: (float, float)
 
     def __init__(self, index: int, coords: set[HexagonTile], owner: str, settlement_type: str):
@@ -232,9 +232,9 @@ class Settlement_point:
         self.coords = coords
         self.owner = owner
         if settlement_type in _settlement_type:
-            self.settlement_type = settlement_type
+            self.type = settlement_type
         else:
-            self.settlement_type = "bot"
+            self.type = "bot"
 
         # vertex that is member of all three tiles is the correct point
         tiles = tuple(coords)
@@ -250,11 +250,11 @@ class Settlement_point:
         """Renders the hexagon on the screen"""
 
         if self.owner != "bot":
-            if self.settlement_type == "Village":
+            if self.type == "Village":
                 imp = pygame.image.load(f"Sprites/{self.owner}/Village.png").convert_alpha()
                 img_rect = imp.get_rect(center=self.xy_coords)
                 screen.blit(imp, img_rect.topleft)
-            elif self.settlement_type == "City":
+            elif self.type == "City":
                 imp = pygame.image.load(f"Sprites/{self.owner}/City.png").convert_alpha()
                 img_rect = imp.get_rect(center=self.xy_coords)
                 screen.blit(imp, img_rect.topleft)
@@ -266,7 +266,7 @@ class Settlement_point:
         return string[:-1]
 
     def __str__(self):
-        return f"{self.coords_to_string()},{self.owner},{self.settlement_type}"
+        return f"{self.coords_to_string()},{self.owner},{self.type}"
 
 
 def vertex_in_set(v, vertices):

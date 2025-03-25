@@ -120,7 +120,6 @@ def render_static(screen, hexagons):
     """Renders hexagons on the screen"""
     for hexagon in hexagons:
         hexagon.render(screen)
-    pygame.display.flip()
 
 def render_transparent(screen, settlement_points: [Settlement_point], road_points: [Road_point], player_nr):
     for settlement_point in settlement_points:
@@ -135,7 +134,6 @@ def render_game_pieces(screen, settlement_points: [Settlement_point], road_point
         point.render(screen)
     for point in road_points:
         point.render(screen)
-    pygame.display.flip()
 
 def render_player_cards(screen, player_hand):
     pass

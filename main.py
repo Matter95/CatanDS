@@ -13,6 +13,7 @@ from UI import (
     init_road_points,
     render_game_pieces
 )
+from building import building
 from dice_roll import roll_dice
 from gloabl_definitions import (
     _screen_width,
@@ -32,7 +33,7 @@ from utils import (
     create_git_dir,
     get_active_player,
     get_initial_active_player,
-    get_player_index, update_turn_phase, update_active_player,
+    get_player_index, update_turn_phase, update_active_player, count_points,
 )
 
 def main():
@@ -82,96 +83,74 @@ def main():
 
     terminated = False
     while not terminated:
-        for event in pygame.event.get():
-            local_player = get_player_index(repo.active_branch.name)
-            turn_phase = get_turn_phase(repo)
+        pygame.time.Clock.tick(clock, 60)
 
-            # do not merge when a loss choice is being made
-            if turn_phase == "dice_roll":
-                if not repo.head.commit.message.__contains__("empty") and not repo.head.commit.message.__contains__("loss"):
-                    # merge with other branches
-                    for i, player in enumerate(_player_colour_2_players):
-                        if i != local_player:
-                            repo.git.merge(f"{player}", allow_unrelated_histories=True)
-                else:
-                    repo.git.fetch()
-            else:
+        turn_phase = get_turn_phase(repo)
+        local_player = get_player_index(repo.active_branch.name)
+
+        # do not merge when a loss choice is being made
+        if turn_phase == "dice_roll":
+            if not repo.head.commit.message.__contains__("empty") and not repo.head.commit.message.__contains__(
+                    "loss"):
                 # merge with other branches
                 for i, player in enumerate(_player_colour_2_players):
                     if i != local_player:
                         repo.git.merge(f"{player}", allow_unrelated_histories=True)
-
-            initial_phase = get_initial_phase(repo)
-            turn_phase = get_turn_phase(repo)
-            settlement_points = get_all_settlement_points(repo, hexagons)
-            road_points = get_all_road_points(repo, hexagons)
-            render_game_pieces(game, settlement_points, road_points)
-
-            # actions that are always possible
-            if event.type == pygame.QUIT:
-                terminated = True
-            if event.type == KEYUP:
-                if event.key == K_ESCAPE:
-                    terminated = True
-
-
-            # we are in the initial phase
-            if turn_phase == "bot":
-                active_player = get_initial_active_player(repo)
-
-                if active_player == local_player:
-                    # Initial Phase One
-                    if initial_phase == "phase_one":
-                        init_phase_one(repo, hexagons)
-                    # Initial Phase Two
-                    elif initial_phase == "phase_two":
-                        init_phase_two(repo, hexagons)
-
-
-
             else:
-                active_player = get_active_player(repo)
+                repo.git.fetch()
+        else:
+            # merge with other branches
+            for i, player in enumerate(_player_colour_2_players):
+                if i != local_player:
+                    repo.git.merge(f"{player}", allow_unrelated_histories=True)
 
-                # Dice Roll
-                if turn_phase == "dice_roll":
-                    roll_dice(repo, hexagons)
+        initial_phase = get_initial_phase(repo)
+        turn_phase = get_turn_phase(repo)
+        settlement_points = get_all_settlement_points(repo, hexagons)
+        road_points = get_all_road_points(repo, hexagons)
 
-                if active_player == local_player:
+        # render everything
+        game.fill((69, 139, 209))
+        render_static(game, hexagons)
+        render_game_pieces(game, settlement_points, road_points)
+        pygame.display.flip()
 
-                    # Trading
-                    # No trade
-                    if event.type == KEYUP:
-                        if event.key == K_RETURN:
-                            pass
-                    # Choose Cards to Trade
-                    if turn_phase == "trading":
-                        trading(repo, )
-                    # Building
-                    # No building
-                    if event.type == KEYUP:
-                        if event.key == K_RETURN:
-                            pass
-                    if turn_phase == "building":
-                        update_turn_phase(repo)
-                        update_active_player(repo)
-                        # add files to index
-                        repo.index.add(os.path.join(repo.working_dir, "state", "game", "turn_phase"))
-                        repo.index.add(os.path.join(repo.working_dir, "state", "game", "active_player"))
-                        author_name = repo.active_branch.name
-                        author = git.Actor(author_name, f"{author_name}@git.com")
-                        commit_id = repo.index.commit(
-                            f"skip_building",
-                            [repo.head.commit],
-                            True,
-                            author,
-                            author,
-                        )
+        if turn_phase == "top":
+            pass
+        # we are in the initial phase
+        elif turn_phase == "bot":
+            active_player = get_initial_active_player(repo)
 
-            # get next player
-            next_player = (local_player + 1) % _number_of_players
-            # change repo
-            repo.git.checkout(f"{_player_colour_2_players[next_player]}")
+            if active_player == local_player:
+                # Initial Phase One
+                if initial_phase == "phase_one":
+                    init_phase_one(repo, hexagons)
+                # Initial Phase Two
+                elif initial_phase == "phase_two":
+                    init_phase_two(repo, hexagons)
+        else:
+            active_player = get_active_player(repo)
+            # Dice Roll
+            if turn_phase == "dice_roll":
+                roll_dice(repo, hexagons)
 
+            if active_player == local_player:
+
+                if turn_phase == "trading":
+                    trading(repo, hexagons)
+
+                if turn_phase == "building":
+                    building(repo, hexagons)
+
+                    points = count_points(repo, hexagons, local_player)
+
+                    if points >= 10:
+                        update_turn_phase(repo, True)
+
+        # get next player
+        next_player = (local_player + 1) % _number_of_players
+        # change repo
+        repo.git.checkout(f"{_player_colour_2_players[next_player]}")
 
     pygame.display.quit()
 

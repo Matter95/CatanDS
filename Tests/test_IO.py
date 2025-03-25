@@ -310,13 +310,13 @@ class TestInputOutput(TestCase):
         sp = get_settlement_point(self.repo, 24, self.hexagons)
         self.assertEqual(sp.coords, self.settlement_points[24].coords)
         self.assertEqual(sp.owner, self.settlement_points[24].owner)
-        self.assertEqual(self.settlement_points[24].settlement_type, sp.settlement_type)
+        self.assertEqual(self.settlement_points[24].type, sp.type)
 
     def testUpdateSettlementPoint(self):
         update_settlement_point(self.repo, 24, "Red", "City")
         sp = get_settlement_point(self.repo, 24, self.hexagons)
         self.assertEqual(sp.owner, "Red")
-        self.assertEqual("City", sp.settlement_type)
+        self.assertEqual("City", sp.type)
 
     def testAllRoadPoint(self):
         rps = get_all_road_points(self.repo, self.hexagons)

@@ -129,11 +129,14 @@ def get_turn_phase(repo: git.Repo):
         line = file.readline()
     return line
 
-def update_turn_phase(repo: git.Repo):
+def update_turn_phase(repo: git.Repo, win: bool = False):
     # load old value
     old_val = get_turn_phase(repo)
     # get next phase
     new_val = turn_phase_next(old_val)
+
+    if win:
+        new_val = "top"
 
     with open(os.path.join(repo.working_dir, "state", "game", "turn_phase"), "w") as file:
         file.write(f"{new_val}")
@@ -369,7 +372,7 @@ def get_all_settlement_points(repo: git.Repo, hexagons: [HexagonTile]) -> [Settl
     with open(path, "r") as file:
         for i, line in enumerate(file):
             line = line.split(",")
-            settlement_points.append(Settlement_point({hexagons[int(line[0])], hexagons[int(line[1])], hexagons[int(line[2])]}, line[3], line[4].replace("\n","")))
+            settlement_points.append(Settlement_point(i, {hexagons[int(line[0])], hexagons[int(line[1])], hexagons[int(line[2])]}, line[3], line[4].replace("\n","")))
     return settlement_points
 
 def get_all_hexagon_tiles_with_nr(repo: git.Repo, hexagons: [HexagonTile], owner: str, roll: int) -> [HexagonTile]:
@@ -423,8 +426,8 @@ def update_settlement_point(repo: git.Repo, index: int, owner: str, settlement_t
     path = os.path.join(repo.working_dir, "state", "game", "settlement_points")
     raw_line = get_settlement_point_raw(repo, index)
     new_line = raw_line.replace("\n","").split(",")
-    new_line[4] = owner
-    new_line[5] = settlement_type
+    new_line[3] = owner
+    new_line[4] = settlement_type
     new_line = str.join(",", new_line)
     new_line += "\n"
     old_file = ""
@@ -499,7 +502,7 @@ def update_road_point(repo: git.Repo, index: int, owner: str):
     path = os.path.join(repo.working_dir, "state", "game", "road_points")
     raw_line = get_road_point_raw(repo, index)
     new_line = raw_line.replace("\n","").split(",")
-    new_line[3] = owner
+    new_line[2] = owner
     new_line = str.join(",", new_line)
     new_line += "\n"
     old_file = ""
@@ -520,14 +523,6 @@ def is_adjacent_road_to_settlement(settlement_point: Settlement_point, road_poin
     else:
         return False
 
-def is_adjacent_road(road_point_one: Settlement_point, road_point_two: Road_point) -> bool:
-    tile_one = list(road_point_one.coords)[0]
-    tile_two = list(road_point_one.coords)[1]
-
-    if tile_one in road_point_two.coords or tile_two in road_point_two.coords:
-        return True
-    else:
-        return False
 
 def is_adjacent_settlement(settlement_point: Settlement_point, neighbour: Settlement_point) -> bool:
     tile_one = list(settlement_point.coords)[0]
@@ -715,12 +710,20 @@ def get_all_viable_road_points(settlement_points: [Settlement_point], road_point
                 continue
 
         if point.owner == "bot":
+            sp_neighbour = []
+            # get both adjacent settlement points
+            for sp in settlement_points:
+                if is_adjacent_road_to_settlement(sp, point):
+                    sp_neighbour.append(sp)
+
             # check that there are no other settlements neighbouring this point
             has_settlement = False
             has_road = False
             for neighbour in owned_roads:
-                if is_adjacent_road(point, neighbour) and neighbour.owner == _player_colour_2_players[player_nr]:
-                    has_road = True
+                for sp in sp_neighbour:
+                    # neighbour road is adjacent to the same settlement point
+                    if is_adjacent_road_to_settlement(sp, neighbour) and neighbour.owner == _player_colour_2_players[player_nr]:
+                        has_road = True
             # check if there is an adjacent road
             for settlement in owned_settlements:
                 if has_road:
@@ -740,13 +743,14 @@ def can_build_type(repo, resources: [int], building_type: str, player_nr: int) -
     available = get_player_buildings_type(repo, building_type, player_nr)
     if available == 0:
         can_build = False
+        return can_build
 
     if building_type == "Village":
         cost = _cost_village
     elif building_type == "City":
         # check if there are villages to upgrade
         villages = get_player_buildings_type(repo, "Village", player_nr)
-        if villages == 0:
+        if villages == 5:
             can_build = False
         cost = _cost_city
     elif building_type == "Road":
@@ -779,3 +783,18 @@ def can_build_something(repo: git.Repo, resources: [int], local_player: int) -> 
         return True
     else:
         return False
+
+
+def count_points(repo: git.Repo, hexagons: [HexagonTile], local_player: int) -> int:
+    player_colour = repo.active_branch.name
+    points = 0
+
+    sps = get_all_settlement_points(repo, hexagons)
+    settlements = get_all_settlements_of_player(sps, local_player)
+
+    for settlement in settlements:
+        if settlement.type == "Village":
+            points += 1
+        elif settlement.type == "City":
+            points += 2
+    return points
