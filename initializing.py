@@ -97,9 +97,9 @@ def initialize_game_state(
                 elif file_path.endswith(os.path.join("bank","development_cards")):
                     val = f"{_development_card_pool_str}"
                 elif file_path.endswith("bought_cards"):
-                    val = "0,0,0"
+                    val = "0,0,0,0"
                 elif file_path.endswith("available_cards"):
-                    val = "0,0,0"
+                    val = "0,0,0,0"
                 elif file_path.endswith("unveiled_cards"):
                     val = "0,0"
                 elif file_path.__contains__(os.path.join("player_buildings", "player_")):
@@ -156,7 +156,7 @@ def init_phase_one(repo: git.Repo, hexagons: [HexagonTile]) -> git.Commit:
     parent = repo.head.commit
 
     # compute all places we can place a settlement
-    available_settlement_points = get_all_available_settlement_points(repo, settlement_points, active_player, hexagons)
+    available_settlement_points = get_all_available_settlement_points(repo, settlement_points, hexagons)
     # choose a settlement
     pick = randrange(len(available_settlement_points))
     sp: Settlement_point = available_settlement_points[pick]
@@ -229,7 +229,7 @@ def init_phase_two(repo: git.Repo, hexagons: [HexagonTile]):
 
 
     # compute all places we can place a settlement
-    available_settlement_points = get_all_available_settlement_points(repo, settlement_points, active_player, hexagons)
+    available_settlement_points = get_all_available_settlement_points(repo, settlement_points, hexagons)
     # choose a settlement
     pick = randrange(len(available_settlement_points))
     sp = available_settlement_points[pick]
@@ -245,7 +245,7 @@ def init_phase_two(repo: git.Repo, hexagons: [HexagonTile]):
     update_settlement_point(repo, sp.index, _player_colour_2_players[active_player], "Village")
     update_road_point(repo, rp.index, _player_colour_2_players[active_player])
 
-    # get resources from second village
+    # get arr from second village
     resources = get_resources_from_hextile(sp.coords)
     update_player_hand(repo, "resource_cards", active_player, resources)
     update_bank_resources(repo, negate_int_arr(resources))

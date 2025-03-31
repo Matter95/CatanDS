@@ -149,7 +149,7 @@ def get_player_hand(repo: git.Repo, hand_type: str, player_nr: int) -> List[int]
     elif hand_type == "bought_cards":
         vals = [0, 0, 0, 0, 0]
     elif hand_type == "available_cards":
-        vals = [0, 0, 0]
+        vals = [0, 0, 0, 0]
     elif hand_type == "unveiled_cards":
         vals = [0, 0]
     else:
@@ -176,7 +176,7 @@ def update_player_hand(repo: git.Repo, hand_type: str, player_nr: int, update_di
         empty = [0, 0, 0, 0, 0]
         path = os.path.join(path, "bought_cards")
     elif hand_type == "available_cards":
-        empty = [0, 0, 0]
+        empty = [0, 0, 0, 0]
         path = os.path.join(path, "available_cards")
     elif hand_type == "unveiled_cards":
         empty = [0, 0]
@@ -238,7 +238,7 @@ def update_player_buildings(repo: git.Repo, player_nr: int, update_diff: [int]):
         new_val = []
         for i, val in enumerate(update_diff):
             if 0 > old_val[i] + val or old_val[i] + val > _player_building_pool[i]:
-                print(f"illegal update: not enough cards. Available {old_val[i]}, decrease {val}")
+                print(f"PLAYER BUILDING: illegal update: not enough cards. Available {old_val[i]}, decrease {val}")
                 return
             new_val.append(old_val[i] + val)
         with open(path, "w") as file:
@@ -269,7 +269,7 @@ def update_bank_resources(repo: git.Repo, update_diff: [int]):
         new_val = []
         for i, val in enumerate(update_diff):
             if 0 > old_val[i] + val or old_val[i] + val > _resource_card_pool[i]:
-                print(f"illegal update: not enough cards. Available {old_val[i]}, decrease {val}")
+                print(f"BANK RES: illegal update: not enough cards. Available {old_val[i]}, decrease {val}")
                 return
             new_val.append(old_val[i] + val)
         with open(path, "w") as file:
@@ -305,8 +305,8 @@ def update_bank_development_cards(repo: git.Repo, update_diff: [int]):
     if update_diff != [0, 0, 0, 0, 0]:
         new_val = []
         for i, val in enumerate(update_diff):
-            if 0 > old_val[i] + val <= _development_card_pool[i]:
-                print(f"illegal update: not enough cards. Available {old_val[i]}, decrease {val}")
+            if 0 > old_val[i] + val or old_val[i] + val > _development_card_pool[i]:
+                print(f"BANK DEV CARDS: illegal update: not enough cards. Available {old_val[i]}, decrease {val}")
                 return
             new_val.append(old_val[i] + val)
         with open(path, "w") as file:
@@ -377,17 +377,18 @@ def get_all_settlement_points(repo: git.Repo, hexagons: [HexagonTile]) -> [Settl
 
 def get_all_hexagon_tiles_with_nr(repo: git.Repo, hexagons: [HexagonTile], owner: str, roll: int) -> [HexagonTile]:
     settlement_points = get_all_settlement_points(repo, hexagons)
+    bandit = get_bandit(repo, hexagons)
     viable = []
     for point in settlement_points:
         if point.owner == owner:
             for hexagon in point.coords:
-                if hexagon.number == roll:
+                if hexagon.number == roll and bandit != hexagon:
                     viable.append(hexagon)
 
     return viable
 
 
-def get_all_available_settlement_points(repo: git.Repo, settlement_points: [Settlement_point], player_nr: int, hexagons: [HexagonTile]) -> [Settlement_point]:
+def get_all_available_settlement_points(repo: git.Repo, settlement_points: [Settlement_point], hexagons: [HexagonTile]) -> [Settlement_point]:
     available_settlement_points = []
     bandit = get_bandit(repo, hexagons)
 
@@ -591,9 +592,9 @@ def get_resources_from_dice_roll(repo: git.Repo, hexagons: [HexagonTile], roll: 
 
     return resources
 
-def get_sum_of_all_resources(resources: [int]) -> int:
+def get_sum_of_array(arr: [int]) -> int:
     res_sum = 0
-    for resource in resources:
+    for resource in arr:
         res_sum += resource
     return res_sum
 
@@ -608,7 +609,7 @@ def randomly_choose_loss(loss, resources):
     # choose cards to loose
     while i < loss:
         index = randrange(0, 5)
-        if resources[index] + diff[index] - 1 > 0:
+        if resources[index] + diff[index] - 1 >= 0:
             diff[index] -= 1
             i += 1
     return diff
@@ -765,12 +766,18 @@ def can_build_type(repo, resources: [int], building_type: str, player_nr: int) -
     return can_build
 
 
-def can_buy_dev_card(resources: [int]) -> [bool]:
+def can_buy_dev_card(repo: git.Repo, resources: [int]) -> [bool]:
+    available_dev_cards = get_bank_development_cards(repo)
+    cards = get_sum_of_array(available_dev_cards)
     can_buy = True
     for i in range(len(resources)):
         if resources[i] < _cost_dev_card[i]:
-            can_build = False
+            can_buy = False
             break
+
+    if cards == 0:
+        can_buy = False
+
     return can_buy
 
 
@@ -786,7 +793,6 @@ def can_build_something(repo: git.Repo, resources: [int], local_player: int) -> 
 
 
 def count_points(repo: git.Repo, hexagons: [HexagonTile], local_player: int) -> int:
-    player_colour = repo.active_branch.name
     points = 0
 
     sps = get_all_settlement_points(repo, hexagons)
@@ -798,3 +804,42 @@ def count_points(repo: git.Repo, hexagons: [HexagonTile], local_player: int) -> 
         elif settlement.type == "City":
             points += 2
     return points
+
+def get_all_viable_bandit_positions(repo: git.Repo, hexagons: [HexagonTile], local_player: int) -> [HexagonTile]:
+    player_hexes = []
+    sps = get_all_settlement_points(repo, hexagons)
+    rps = get_all_road_points(repo, hexagons)
+
+    settlements = get_all_settlements_of_player(sps, local_player)
+    roads = get_all_roads_of_player(rps, local_player)
+
+    # gather all hexes that have player buildings on them
+    for settlement in settlements:
+        for coord in settlement.coords:
+            if coord not in player_hexes:
+                player_hexes.append(coord)
+    for road in roads:
+        for coord in road.coords:
+            if coord not in player_hexes:
+                player_hexes.append(coord)
+
+    viable_bandit_positions = []
+
+    for hex in hexagons:
+        if hex in player_hexes:
+            continue
+        else:
+            if hex.resource != "Water":
+                viable_bandit_positions.append(hex)
+
+    return viable_bandit_positions
+
+def get_settlements_adjacent_to_tile(repo: git.Repo, hexagons: [HexagonTile], hexagon: HexagonTile) -> [Settlement_point]:
+    sps = get_all_settlement_points(repo, hexagons)
+    settlements = []
+
+    for sp in sps:
+        if sp.owner != "bot" and hexagon in sp.coords:
+            settlements.append(sp)
+
+    return settlements

@@ -83,7 +83,7 @@ def main():
 
     terminated = False
     while not terminated:
-        pygame.time.Clock.tick(clock, 60)
+        # pygame.time.Clock.tick(clock, 60)
 
         turn_phase = get_turn_phase(repo)
         local_player = get_player_index(repo.active_branch.name)
@@ -116,7 +116,7 @@ def main():
         pygame.display.flip()
 
         if turn_phase == "top":
-            pass
+            terminated = True
         # we are in the initial phase
         elif turn_phase == "bot":
             active_player = get_initial_active_player(repo)

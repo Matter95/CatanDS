@@ -10,13 +10,14 @@ from utils import (
     get_active_player,
     get_resources_from_dice_roll,
     get_player_hand,
-    get_sum_of_all_resources,
+    get_sum_of_array,
     update_bank_resources,
     update_player_hand,
     negate_int_arr,
     get_player_index,
     update_turn_phase,
-    randomly_choose_loss, get_bank_resources, get_diff_between_arrays
+    randomly_choose_loss, get_bank_resources, get_diff_between_arrays, get_all_viable_bandit_positions, update_bandit,
+    get_settlements_adjacent_to_tile
 )
 
 def roll_dice(repo: git.Repo, hexagons: [HexagonTile]):
@@ -27,6 +28,8 @@ def roll_dice(repo: git.Repo, hexagons: [HexagonTile]):
     # latest commit
     parent = repo.head.commit
     has_commit = False
+
+
 
     # check if references for loss or empty were created for this player
     for ref in repo.references:
@@ -89,9 +92,37 @@ def roll_dice(repo: git.Repo, hexagons: [HexagonTile]):
                             bank_diff[i] += abs(diff[i])
                     update_bank_resources(repo, bank_diff)
 
+                    # move bandit
+                    bandit_positions = get_all_viable_bandit_positions(repo, hexagons, local_player)
+
+                    choice = bandit_positions[randrange(len(bandit_positions))]
+                    update_bandit(repo, hexagons, choice.id)
+
+                    # steal a random resource
+                    sp_steal = get_settlements_adjacent_to_tile(repo, hexagons, choice)
+                    if sp_steal:
+                        sp = sp_steal[randrange(len(sp_steal))]
+                        stolen = False
+                        steal_from = get_player_index(sp.owner)
+                        hand = get_player_hand(repo, "resource_cards", steal_from)
+
+                        diff = [0,0,0,0,0]
+
+                        while stolen == False:
+                            steal_i = randrange(len(hand))
+                            if hand[steal_i] > 0:
+                                diff[steal_i] += 1
+                                break
+
+                        update_player_hand(repo, "resource_cards", local_player, diff)
+                        update_player_hand(repo, "resource_cards", steal_from, negate_int_arr(diff))
+                        files.append(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{local_player + 1}"))
+                        files.append(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{steal_from + 1}"))
+
                     update_turn_phase(repo)
                     files.append(os.path.join(repo.working_dir, "state", "game", "bank", "resource_cards"))
                     files.append(os.path.join(repo.working_dir, "state", "game", "turn_phase"))
+                    files.append(os.path.join(repo.working_dir, "state", "game", "bandit"))
 
                     # add files to index
                     for file_path in files:
@@ -100,7 +131,7 @@ def roll_dice(repo: git.Repo, hexagons: [HexagonTile]):
 
                     # empty commit
                     repo.index.commit(
-                        f"roll_dice_merge",
+                        f"roll_dice_steal_and_merge",
                         children,
                         True,
                         author,
@@ -117,7 +148,7 @@ def roll_dice(repo: git.Repo, hexagons: [HexagonTile]):
             if roll == 7:
                 # no resource gain this round, check if player has more than 7 cards
                 resources = get_player_hand(repo, "resource_cards", local_player)
-                cards = get_sum_of_all_resources(resources)
+                cards = get_sum_of_array(resources)
 
                 # loose half the cards (ceil(cards/2))
                 if cards > 7:
@@ -173,6 +204,17 @@ def roll_dice(repo: git.Repo, hexagons: [HexagonTile]):
         local_player = get_player_index(repo.active_branch.name)
 
         if active_player == local_player:
+            # if there are bought cards, move them to available cards
+            cards = get_player_hand(repo, "bought_cards", local_player)
+            card_sum = get_sum_of_array(cards)
+
+            if card_sum > 0:
+                update_player_hand(repo, "available_cards", local_player, cards)
+                update_player_hand(repo, "bought_cards", local_player, negate_int_arr(cards))
+
+                repo.index.add(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{local_player + 1}", "bought_cards"))
+                repo.index.add(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{local_player + 1}", "available_cards"))
+
             result = randrange(2, 12)
 
             # send dice result to all other players
