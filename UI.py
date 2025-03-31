@@ -128,8 +128,13 @@ def render_transparent(screen, settlement_points: [Settlement_point], road_point
         road_point.render_transparent(screen, _player_colour_2_players[player_nr])
     pygame.display.flip()
 
-def render_game_pieces(screen, settlement_points: [Settlement_point], road_points: [Road_point]):
+def render_game_pieces(screen, settlement_points: [Settlement_point], road_points: [Road_point], bandit: [HexagonTile]):
     """Renders hexagons on the screen"""
+
+    imp = pygame.image.load(f"Sprites/Map/bandit.png").convert_alpha()
+    img_rect = imp.get_rect(center=bandit.centre)
+    screen.blit(imp, img_rect.topleft)
+
     for point in settlement_points:
         point.render(screen)
     for point in road_points:

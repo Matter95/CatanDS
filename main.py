@@ -33,7 +33,7 @@ from utils import (
     create_git_dir,
     get_active_player,
     get_initial_active_player,
-    get_player_index, update_turn_phase, update_active_player, count_points,
+    get_player_index, update_turn_phase, update_active_player, count_points, get_bandit,
 )
 
 def sim(with_ui=False):
@@ -103,11 +103,12 @@ def sim(with_ui=False):
 
             settlement_points = get_all_settlement_points(repo, hexagons)
             road_points = get_all_road_points(repo, hexagons)
+            bandit = get_bandit(repo, hexagons)
 
             # render everything
             game.fill((69, 139, 209))
             render_static(game, hexagons)
-            render_game_pieces(game, settlement_points, road_points)
+            render_game_pieces(game, settlement_points, road_points, bandit)
             pygame.display.flip()
         else:
             local_player = get_player_index(repo.active_branch.name)
