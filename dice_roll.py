@@ -16,7 +16,7 @@ from utils import (
     negate_int_arr,
     get_player_index,
     update_turn_phase,
-    randomly_choose_loss, get_bank_resources, get_diff_between_arrays, get_all_viable_bandit_positions, update_bandit,
+    randomly_choose_loss, get_diff_between_arrays, get_all_viable_bandit_positions, update_bandit,
     get_settlements_adjacent_to_tile
 )
 
@@ -28,8 +28,6 @@ def roll_dice(repo: git.Repo, hexagons: [HexagonTile]):
     # latest commit
     parent = repo.head.commit
     has_commit = False
-
-
 
     # check if references for loss or empty were created for this player
     for ref in repo.references:
@@ -109,6 +107,8 @@ def roll_dice(repo: git.Repo, hexagons: [HexagonTile]):
                         diff = [0,0,0,0,0]
 
                         while stolen == False:
+                            if hand == [0,0,0,0,0]:
+                                break
                             steal_i = randrange(len(hand))
                             if hand[steal_i] > 0:
                                 diff[steal_i] += 1

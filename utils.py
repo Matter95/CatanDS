@@ -147,7 +147,7 @@ def get_player_hand(repo: git.Repo, hand_type: str, player_nr: int) -> List[int]
     if hand_type == "resource_cards":
         vals = [0, 0, 0, 0, 0]
     elif hand_type == "bought_cards":
-        vals = [0, 0, 0, 0, 0]
+        vals = [0, 0, 0, 0]
     elif hand_type == "available_cards":
         vals = [0, 0, 0, 0]
     elif hand_type == "unveiled_cards":
@@ -786,6 +786,7 @@ def can_build_something(repo: git.Repo, resources: [int], local_player: int) -> 
         can_build_type(repo, resources, "City", local_player)
         or can_build_type(repo, resources, "Village", local_player)
         or can_build_type(repo, resources, "Road", local_player)
+        or can_buy_dev_card(repo, resources)
     ):
         return True
     else:
@@ -794,6 +795,23 @@ def can_build_something(repo: git.Repo, resources: [int], local_player: int) -> 
 
 def count_points(repo: git.Repo, hexagons: [HexagonTile], local_player: int) -> int:
     points = 0
+
+    uc = get_player_hand(repo, "unveiled_cards", local_player)
+    knights = uc[0]
+    vp = uc[1]
+
+    #eligible for largest army
+    if knights > 3:
+        largest_army = True
+        for player in range(_number_of_players):
+            if player != local_player:
+                player_uc = get_player_hand(repo, "unveiled_cards", player)
+                if knights < player_uc[0]:
+                    largest_army = False
+        if largest_army:
+            points += 2
+
+    points += vp
 
     sps = get_all_settlement_points(repo, hexagons)
     settlements = get_all_settlements_of_player(sps, local_player)

@@ -10,9 +10,7 @@ REMOTE_DIR = os.path.join(ROOT_DIR, "Remote")
 TEST_DIR = os.path.join(ROOT_DIR, "Tests")
 
 
-pygame.init()
-pygame.font.init()
-pygame.display.init()
+
 _player_colour_2_players = ["Red", "Blue"]
 _player_colour_4_players = ["Red", "Blue", "Green", "Orange"]
 _player_colour_reversed_2_players = ["Blue", "Red"]
@@ -33,6 +31,7 @@ _development_card_type: Tuple[str, ...] = _progress_card_type + ("Knight", "Vict
 _resource_card_pool: Tuple[int, ...] = (19, 19, 19, 19, 19)
 _resource_card_pool_str: str = "19,19,19,19,19"
 _development_card_pool: Tuple[int, ...] = (2, 2, 2, 14, 5)
+_dev_card_iid: Tuple[int, ...] = (0,0,1,1,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4)
 _development_card_pool_str: str = "2,2,2,14,5"
 _number_of_players = 2
 

@@ -17,7 +17,7 @@ from building import building
 from dice_roll import roll_dice
 from gloabl_definitions import (
     _screen_width,
-    _screen_height, ROOT_DIR, _number_of_players, _player_colour_2_players,
+    _screen_height, ROOT_DIR, _number_of_players, _player_colour_2_players, HexagonTile,
 )
 from initializing import (
     initialize_game_state,
@@ -36,16 +36,21 @@ from utils import (
     get_player_index, update_turn_phase, update_active_player, count_points,
 )
 
-def main():
-    """Main function"""
+def sim(with_ui=False):
+    if with_ui:
+        pygame.init()
+        pygame.font.init()
+        pygame.display.init()
 
-    game = pygame.display.set_mode((_screen_width, _screen_height))
-    game.fill((69, 139, 209))
+        game = pygame.display.set_mode((_screen_width, _screen_height))
+        game.fill((69, 139, 209))
 
-    clock = pygame.time.Clock()
+        clock = pygame.time.Clock()
+        hexagons = init_hexagons()
+
+        render_static(game, hexagons)
+
     hexagons = init_hexagons()
-
-    render_static(game, hexagons)
 
     # check if there is already a game around
     try:
@@ -83,76 +88,118 @@ def main():
 
     terminated = False
     while not terminated:
-        # pygame.time.Clock.tick(clock, 60)
+        if with_ui:
+            for event in pygame.event.get():
+                # actions that are always possible
+                if event.type == pygame.QUIT:
+                    terminated = True
+                if event.type == KEYUP:
+                    if event.key == K_ESCAPE:
+                        terminated = True
 
-        turn_phase = get_turn_phase(repo)
-        local_player = get_player_index(repo.active_branch.name)
+            local_player = get_player_index(repo.active_branch.name)
+            merge_repos(repo)
+            do_turn(repo, local_player, hexagons)
 
-        # do not merge when a loss choice is being made
-        if turn_phase == "dice_roll":
-            if not repo.head.commit.message.__contains__("empty") and not repo.head.commit.message.__contains__(
-                    "loss"):
-                # merge with other branches
-                for i, player in enumerate(_player_colour_2_players):
-                    if i != local_player:
-                        repo.git.merge(f"{player}", allow_unrelated_histories=True)
-            else:
-                repo.git.fetch()
+            settlement_points = get_all_settlement_points(repo, hexagons)
+            road_points = get_all_road_points(repo, hexagons)
+
+            # render everything
+            game.fill((69, 139, 209))
+            render_static(game, hexagons)
+            render_game_pieces(game, settlement_points, road_points)
+            pygame.display.flip()
         else:
+            local_player = get_player_index(repo.active_branch.name)
+            merge_repos(repo)
+            do_turn(repo, local_player, hexagons)
+
+    if with_ui:
+        pygame.display.quit()
+
+
+def switch_player(repo: git.Repo, local_player: int):
+    # get next player
+    next_player = (local_player + 1) % _number_of_players
+    # change repo
+    repo.git.checkout(f"{_player_colour_2_players[next_player]}")
+
+
+def do_turn(repo: git.Repo, local_player: int, hexagons: [HexagonTile]):
+    switch = False
+    initial_phase = get_initial_phase(repo)
+    turn_phase = get_turn_phase(repo)
+
+    if turn_phase == "top":
+        return
+    # we are in the initial phase
+    elif turn_phase == "bot":
+        active_player = get_initial_active_player(repo)
+
+        if active_player == local_player:
+            # Initial Phase One
+            if initial_phase == "phase_one":
+                init_phase_one(repo, hexagons)
+            # Initial Phase Two
+            elif initial_phase == "phase_two":
+                init_phase_two(repo, hexagons)
+        else:
+            switch = True
+    else:
+        active_player = get_active_player(repo)
+        # Dice Roll
+        if turn_phase == "dice_roll":
+            roll_dice(repo, hexagons)
+            switch = True
+        if active_player == local_player:
+
+            if turn_phase == "trading":
+                trading(repo, hexagons)
+
+            if turn_phase == "building":
+                building(repo, hexagons)
+
+                points = count_points(repo, hexagons, local_player)
+                if points >= 10:
+                    update_turn_phase(repo, True)
+                    repo.index.add(os.path.join(os.path.join(repo.working_dir, "state", "game", "turn_phase")))
+
+                    author_name = repo.active_branch.name
+                    author = git.Actor(author_name, f"{author_name}@git.com")
+                    repo.index.commit(
+                        f"victory_player{local_player + 1}",
+                        [repo.head.commit],
+                        True,
+                        author,
+                        author,
+                    )
+
+                    switch = True
+        else:
+            switch = True
+
+    if switch:
+        switch_player(repo, local_player)
+
+def merge_repos(repo: git.Repo):
+    turn_phase = get_turn_phase(repo)
+    local_player = get_player_index(repo.active_branch.name)
+
+    # do not merge when a loss choice is being made
+    if turn_phase == "dice_roll":
+        if not repo.head.commit.message.__contains__("empty") and not repo.head.commit.message.__contains__(
+                "loss"):
             # merge with other branches
             for i, player in enumerate(_player_colour_2_players):
                 if i != local_player:
                     repo.git.merge(f"{player}", allow_unrelated_histories=True)
-
-        initial_phase = get_initial_phase(repo)
-        turn_phase = get_turn_phase(repo)
-        settlement_points = get_all_settlement_points(repo, hexagons)
-        road_points = get_all_road_points(repo, hexagons)
-
-        # render everything
-        game.fill((69, 139, 209))
-        render_static(game, hexagons)
-        render_game_pieces(game, settlement_points, road_points)
-        pygame.display.flip()
-
-        if turn_phase == "top":
-            terminated = True
-        # we are in the initial phase
-        elif turn_phase == "bot":
-            active_player = get_initial_active_player(repo)
-
-            if active_player == local_player:
-                # Initial Phase One
-                if initial_phase == "phase_one":
-                    init_phase_one(repo, hexagons)
-                # Initial Phase Two
-                elif initial_phase == "phase_two":
-                    init_phase_two(repo, hexagons)
         else:
-            active_player = get_active_player(repo)
-            # Dice Roll
-            if turn_phase == "dice_roll":
-                roll_dice(repo, hexagons)
-
-            if active_player == local_player:
-
-                if turn_phase == "trading":
-                    trading(repo, hexagons)
-
-                if turn_phase == "building":
-                    building(repo, hexagons)
-
-                    points = count_points(repo, hexagons, local_player)
-
-                    if points >= 10:
-                        update_turn_phase(repo, True)
-
-        # get next player
-        next_player = (local_player + 1) % _number_of_players
-        # change repo
-        repo.git.checkout(f"{_player_colour_2_players[next_player]}")
-
-    pygame.display.quit()
+            repo.git.fetch()
+    else:
+        # merge with other branches
+        for i, player in enumerate(_player_colour_2_players):
+            if i != local_player:
+                repo.git.merge(f"{player}", allow_unrelated_histories=True)
 
 
-main()
+sim(True)
