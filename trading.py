@@ -13,7 +13,7 @@ from utils import (
     update_player_hand,
     update_bank_resources,
     negate_int_arr,
-    can_build_something, get_player_buildings_type
+    can_build_something, get_player_buildings_type, get_sum_of_array
 )
 
 
@@ -23,10 +23,8 @@ def trading(repo: git.Repo, hexagons: [HexagonTile]):
     resources = get_player_hand(repo, "resource_cards", local_player)
     # already used up all villages, should build cities
     villages = get_player_buildings_type(repo, "Village", local_player)
-
     # if the player cannot build anything, trade randomly
-    if can_build_something(repo, resources, local_player) and villages != 5:
-
+    if get_sum_of_array(resources) <= 7 and can_build_something(repo, resources, local_player) and villages != 5:
         # no need to trade
         finish_trading(repo, local_player)
     else:
