@@ -3,7 +3,7 @@ import shutil
 
 import git
 
-from repo_utils import init_repo, get_repo_author_gitdir
+from repo_utils import init_repo
 
 
 def onerror(func, path, exc_info):

@@ -10,7 +10,8 @@ from gloabl_definitions import (
     _left_most_xy_coords,
     _hexagon_radius,
     _hex_num_width,
-    _hex_num_height, HexagonTile, Road_point, Settlement_point, ROOT_DIR, REMOTE_DIR, _player_colour_2_players
+    _hex_num_height, HexagonTile, Road_point, Settlement_point,
+    get_player_colour, _number_of_players
 )
 import pygame
 import pygame.gfxdraw
@@ -125,7 +126,7 @@ def render_transparent(screen, settlement_points: [Settlement_point], road_point
     for settlement_point in settlement_points:
         settlement_point.render(screen)
     for road_point in road_points:
-        road_point.render_transparent(screen, _player_colour_2_players[player_nr])
+        road_point.render_transparent(screen, get_player_colour(_number_of_players)[player_nr])
     pygame.display.flip()
 
 def render_game_pieces(screen, settlement_points: [Settlement_point], road_points: [Road_point], bandit: [HexagonTile]):
@@ -135,9 +136,9 @@ def render_game_pieces(screen, settlement_points: [Settlement_point], road_point
     img_rect = imp.get_rect(center=bandit.centre)
     screen.blit(imp, img_rect.topleft)
 
-    for point in settlement_points:
-        point.render(screen)
     for point in road_points:
+        point.render(screen)
+    for point in settlement_points:
         point.render(screen)
 
 def render_player_cards(screen, player_hand):

@@ -1,4 +1,5 @@
 import os
+from math import ceil
 
 import git
 import pygame
@@ -17,8 +18,8 @@ from building import building
 from dice_roll import roll_dice
 from gloabl_definitions import (
     _screen_width,
-    _screen_height, ROOT_DIR, _number_of_players, _player_colour_2_players, HexagonTile, _resource_card_pool,
-    _development_card_pool, _player_building_pool,
+    _screen_height, ROOT_DIR, _number_of_players, HexagonTile, _resource_card_pool,
+    _development_card_pool, _player_building_pool, get_player_colour,
 )
 from initializing import (
     initialize_game_state,
@@ -34,12 +35,20 @@ from utils import (
     create_git_dir,
     get_active_player,
     get_initial_active_player,
-    get_player_index, update_turn_phase, update_active_player, count_points, get_bandit, get_player_hand,
-    get_bank_resources, get_bank_development_cards, get_discard_pile, get_all_settlements_of_player,
-    get_all_roads_of_player, get_player_buildings,
+    get_player_index,
+    update_turn_phase,
+    count_points,
+    get_bandit,
+    get_player_hand,
+    get_bank_resources,
+    get_bank_development_cards,
+    get_discard_pile,
+    get_all_settlements_of_player,
+    get_all_roads_of_player,
+    get_player_buildings,
 )
 
-def sim(with_ui=False):
+def sim(repo_folder_nr=-1, with_ui=False):
     if with_ui:
         pygame.init()
         pygame.font.init()
@@ -48,7 +57,6 @@ def sim(with_ui=False):
         game = pygame.display.set_mode((_screen_width, _screen_height))
         game.fill((69, 139, 209))
 
-        clock = pygame.time.Clock()
         hexagons = init_hexagons()
 
         render_static(game, hexagons)
@@ -57,7 +65,7 @@ def sim(with_ui=False):
 
     # check if there is already a game around
     try:
-        repo = Repo(os.path.join(ROOT_DIR, "Catan"))
+        repo = Repo(os.path.join(ROOT_DIR, f"Catan_{repo_folder_nr}"))
         init_state = get_initial_phase(repo)
     except NoSuchPathError:
         init_state = None
@@ -66,13 +74,16 @@ def sim(with_ui=False):
     if init_state is None:
         settlement_points = init_settlement_points(hexagons)
         road_points = init_road_points(hexagons)
-        repo = create_git_dir()
+        repo = create_git_dir(f"Catan_{repo_folder_nr}")
         # initialize map and git folders
         player_nr = 0
         while player_nr < _number_of_players:
             # create a branch for each player
-            player_name = _player_colour_2_players[player_nr]
-            repo.git.checkout("-b", f"{player_name}")
+            player_name = get_player_colour(_number_of_players)[player_nr]
+            if repo_folder_nr == -1:
+                repo.git.checkout("-b", f"{player_name}")
+            else:
+                repo.git.checkout("-b", f"{player_name}_{repo_folder_nr}")
             if player_nr == 0:
                 initialize_game_state(repo, settlement_points, road_points, player_name)
             else:
@@ -101,9 +112,10 @@ def sim(with_ui=False):
                         terminated = True
 
             local_player = get_player_index(repo.active_branch.name)
-            merge_repos(repo)
+            merge_repos(repo, repo_folder_nr)
             if check_invariants(repo, hexagons):
-                do_turn(repo, local_player, hexagons)
+                if do_turn(repo, local_player, hexagons, repo_folder_nr):
+                    terminated = True
             else:
                 print(f"Illegal state {local_player}")
                 terminated = True
@@ -118,9 +130,10 @@ def sim(with_ui=False):
             pygame.display.flip()
         else:
             local_player = get_player_index(repo.active_branch.name)
-            merge_repos(repo)
+            merge_repos(repo, repo_folder_nr)
             if check_invariants(repo, hexagons):
-                do_turn(repo, local_player, hexagons)
+                if do_turn(repo, local_player, hexagons, repo_folder_nr):
+                    terminated = True
             else:
                 print(f"Illegal state {local_player}")
                 terminated = True
@@ -129,20 +142,20 @@ def sim(with_ui=False):
         pygame.display.quit()
 
 
-def switch_player(repo: git.Repo, local_player: int):
+def switch_player(repo: git.Repo, local_player: int, repo_folder_nr: int):
     # get next player
     next_player = (local_player + 1) % _number_of_players
     # change repo
-    repo.git.checkout(f"{_player_colour_2_players[next_player]}")
+    repo.git.checkout(f"{get_player_colour(_number_of_players)[next_player]}_{repo_folder_nr}")
 
 
-def do_turn(repo: git.Repo, local_player: int, hexagons: [HexagonTile]):
+def do_turn(repo: git.Repo, local_player: int, hexagons: [HexagonTile], repo_folder_nr):
     switch = False
     initial_phase = get_initial_phase(repo)
     turn_phase = get_turn_phase(repo)
 
     if turn_phase == "top":
-        return
+        return True
     # we are in the initial phase
     elif turn_phase == "bot":
         active_player = get_initial_active_player(repo)
@@ -190,9 +203,10 @@ def do_turn(repo: git.Repo, local_player: int, hexagons: [HexagonTile]):
             switch = True
 
     if switch:
-        switch_player(repo, local_player)
+        switch_player(repo, local_player, repo_folder_nr)
+    return False
 
-def merge_repos(repo: git.Repo):
+def merge_repos(repo: git.Repo, repo_folder_nr: int):
     turn_phase = get_turn_phase(repo)
     local_player = get_player_index(repo.active_branch.name)
 
@@ -201,16 +215,23 @@ def merge_repos(repo: git.Repo):
         if not repo.head.commit.message.__contains__("empty") and not repo.head.commit.message.__contains__(
                 "loss"):
             # merge with other branches
-            for i, player in enumerate(_player_colour_2_players):
+            for i, player in enumerate(get_player_colour(_number_of_players)):
                 if i != local_player:
-                    repo.git.merge(f"{player}", allow_unrelated_histories=True)
+                    if repo_folder_nr == -1:
+                        repo.git.merge(f"{player}", allow_unrelated_histories=True)
+                    else:
+                        repo.git.merge(f"{player}_{repo_folder_nr}", allow_unrelated_histories=True)
+
         else:
             repo.git.fetch()
     else:
         # merge with other branches
-        for i, player in enumerate(_player_colour_2_players):
+        for i, player in enumerate(get_player_colour(_number_of_players)):
             if i != local_player:
-                repo.git.merge(f"{player}", allow_unrelated_histories=True)
+                if repo_folder_nr == -1:
+                    repo.git.merge(f"{player}", allow_unrelated_histories=True)
+                else:
+                    repo.git.merge(f"{player}_{repo_folder_nr}", allow_unrelated_histories=True)
 
 def check_invariants(repo: git.Repo, hexagons: [HexagonTile]) -> bool:
     res_cards = check_conservation_of_resource_cards(repo)
@@ -230,6 +251,7 @@ def check_conservation_of_resource_cards(repo: git.Repo) -> bool:
     if cards == list(_resource_card_pool):
         return True
     else:
+        print(f"illegal state res cards: current: {cards}; expected: {_resource_card_pool}")
         return False
 
 def check_conservation_of_development_cards(repo: git.Repo) -> bool:
@@ -256,6 +278,7 @@ def check_conservation_of_development_cards(repo: git.Repo) -> bool:
     if cards == list(_development_card_pool):
         return True
     else:
+        print(f"illegal state dev cards: current: {cards}; expected: {_development_card_pool}")
         return False
 
 def check_conservation_of_player_buildings(repo: git.Repo, hexagons: [HexagonTile]) -> bool:
@@ -277,6 +300,35 @@ def check_conservation_of_player_buildings(repo: git.Repo, hexagons: [HexagonTil
 
         if buildings != list(_player_building_pool):
             invariant = False
+            print(f"illegal state buildings: current: {buildings}; expected: {_player_building_pool}")
     return invariant
 
-sim(True)
+
+def get_stats(repo_folder):
+    repo = Repo(os.path.join(ROOT_DIR, repo_folder))
+    total_bytes = 0
+    nr_commits = 0
+    nr_rounds = 0
+    # Iterate through all commits
+    for commit in repo.iter_commits():
+        if commit.message.__contains__("finish_building"):
+            nr_rounds += 1
+        nr_commits += 1
+        if commit.parents:  # Ensure commit has a parent
+            diff = commit.diff(commit.parents[0], create_patch=True)
+            for change in diff:
+                if change.diff:
+                    total_bytes += len(change.diff)
+    if not os.path.isfile(os.path.join(ROOT_DIR, "stats")):
+        with open(os.path.join(ROOT_DIR, "stats"), "x") as f:
+            pass
+    with open(os.path.join(ROOT_DIR, "stats"), "a") as f:
+        f.write(f"{total_bytes/1000};{nr_commits};{ceil(nr_rounds / _number_of_players)}\n")
+
+
+def simulate(number_of_sims: int):
+    for i in range(number_of_sims):
+        #sim(i)
+        get_stats(f"Catan_{i}")
+
+simulate(5)

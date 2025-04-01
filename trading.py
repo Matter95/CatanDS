@@ -13,7 +13,9 @@ from utils import (
     update_player_hand,
     update_bank_resources,
     negate_int_arr,
-    can_build_something, get_player_buildings_type, get_sum_of_array
+    can_build_something,
+    get_player_buildings_type,
+    get_sum_of_array
 )
 
 
@@ -104,40 +106,48 @@ def trading(repo: git.Repo, hexagons: [HexagonTile]):
                 hand_diff[buy_resource] += 1
 
                 # update bank and player hand
-                update_player_hand(repo, "resource_cards", local_player, hand_diff)
-                update_bank_resources(repo, negate_int_arr(hand_diff))
+                update = update_player_hand(repo, "resource_cards", local_player, hand_diff)
+                update = update and update_bank_resources(repo, negate_int_arr(hand_diff))
 
                 files = [
                     os.path.join(repo.working_dir, "state", "game", "bank", "resource_cards"),
                     os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{local_player + 1}")
                 ]
 
-                for file in files:
-                    repo.index.add(file)
+                if update:
+                    for file in files:
+                        repo.index.add(file)
 
-                author_name = repo.active_branch.name
-                author = git.Actor(author_name, f"{author_name}@git.com")
-                repo.index.commit(
-                    f"trade_player{local_player + 1}",
-                    [repo.head.commit],
-                    True,
-                    author,
-                    author,
-                )
-                no_trade = False
+                    author_name = repo.active_branch.name
+                    author = git.Actor(author_name, f"{author_name}@git.com")
+                    repo.index.commit(
+                        f"trade_player{local_player + 1}",
+                        [repo.head.commit],
+                        True,
+                        author,
+                        author,
+                    )
+                    no_trade = False
+                else:
+                    print("update failed in trade")
+                    repo.git.reset("--hard", "HEAD")
 
 def finish_trading(repo: git.Repo, local_player: int):
     # next phase
-    update_turn_phase(repo)
+    update = update_turn_phase(repo)
 
-    # add files to index
-    repo.index.add(os.path.join(repo.working_dir, "state", "game", "turn_phase"))
-    author_name = repo.active_branch.name
-    author = git.Actor(author_name, f"{author_name}@git.com")
-    repo.index.commit(
-        f"finish_trading_player{local_player + 1}",
-        [repo.head.commit],
-        True,
-        author,
-        author,
-    )
+    if update:
+        # add files to index
+        repo.index.add(os.path.join(repo.working_dir, "state", "game", "turn_phase"))
+        author_name = repo.active_branch.name
+        author = git.Actor(author_name, f"{author_name}@git.com")
+        repo.index.commit(
+            f"finish_trading_player{local_player + 1}",
+            [repo.head.commit],
+            True,
+            author,
+            author,
+        )
+    else:
+        print("update failed in finish trade")
+        repo.git.reset("--hard", "HEAD")

@@ -72,7 +72,7 @@ class TestInputOutput(TestCase):
             cls.road_points = init_road_points(cls.hexagons)
             cls.repo = create_git_dir_test()
             # initialize map and git folders
-            initialize_game_state(cls.repo, cls.settlement_points, cls.road_points)
+            initialize_game_state(cls.repo, cls.settlement_points, cls.road_points, "Red")
 
 
     def testGetWharfType(self):
@@ -150,8 +150,8 @@ class TestInputOutput(TestCase):
         uc = get_player_hand(self.repo, "unveiled_cards", 1)
 
         self.assertEqual([0, 0, 0, 0, 0], rc)
-        self.assertEqual([0, 0, 0, 0, 0], bc)
-        self.assertEqual([0, 0, 0], ac)
+        self.assertEqual([0, 0, 0, 0], bc)
+        self.assertEqual([0, 0, 0, 0], ac)
         self.assertEqual([0, 0], uc)
 
     def testUpdatePlayerHand(self):
@@ -176,21 +176,21 @@ class TestInputOutput(TestCase):
         self.assertCountEqual([0,2,0,4,0], rc)
 
         # DEVELOPMENT CARDS
-        update_player_hand(self.repo, "bought_cards", 0, [1,1,1,5,3])
+        update_player_hand(self.repo, "bought_cards", 0, [1,1,1,5])
         bc = get_player_hand(self.repo, "bought_cards", 0)
-        self.assertCountEqual([1,1,1,5,3], bc)
+        self.assertCountEqual([1,1,1,5], bc)
 
-        update_player_hand(self.repo, "bought_cards", 0, [0,-1,0,0,0])
+        update_player_hand(self.repo, "bought_cards", 0, [0,-1,0,0])
         bc = get_player_hand(self.repo, "bought_cards", 0)
-        self.assertCountEqual([1,0,1,5,3], bc)
+        self.assertCountEqual([1,0,1,5], bc)
 
-        update_player_hand(self.repo, "bought_cards", 0, [4,1,1,5,3])
+        update_player_hand(self.repo, "bought_cards", 0, [4,1,1,5])
         bc = get_player_hand(self.repo, "bought_cards", 0)
-        self.assertCountEqual([1,0,1,5,3], bc)
+        self.assertCountEqual([1,0,1,5], bc)
 
-        update_player_hand(self.repo, "bought_cards", 0, [-4,1,1,5,3])
+        update_player_hand(self.repo, "bought_cards", 0, [-4,1,1,5])
         bc = get_player_hand(self.repo, "bought_cards", 0)
-        self.assertCountEqual([1,0,1,5,3], bc)
+        self.assertCountEqual([1,0,1,5], bc)
 
 
         update_player_hand(self.repo, "unveiled_cards", 0, [1,2])
@@ -313,10 +313,17 @@ class TestInputOutput(TestCase):
         self.assertEqual(self.settlement_points[24].type, sp.type)
 
     def testUpdateSettlementPoint(self):
-        update_settlement_point(self.repo, 24, "Red", "City")
-        sp = get_settlement_point(self.repo, 24, self.hexagons)
-        self.assertEqual(sp.owner, "Red")
-        self.assertEqual("City", sp.type)
+        sps = get_all_settlement_points(self.repo, self.hexagons)
+        for sp in sps:
+            update_settlement_point(self.repo, sp.index, "Red", "Village")
+            nsp = get_settlement_point(self.repo, sp.index, self.hexagons)
+            self.assertEqual("Red", nsp.owner)
+            self.assertEqual("Village", nsp.type)
+        for sp in sps:
+            update_settlement_point(self.repo, sp.index, "Red", "City")
+            nsp = get_settlement_point(self.repo, sp.index, self.hexagons)
+            self.assertEqual("Red", nsp.owner)
+            self.assertEqual("City", nsp.type)
 
     def testAllRoadPoint(self):
         rps = get_all_road_points(self.repo, self.hexagons)

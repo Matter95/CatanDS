@@ -9,12 +9,28 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 REMOTE_DIR = os.path.join(ROOT_DIR, "Remote")
 TEST_DIR = os.path.join(ROOT_DIR, "Tests")
 
-
-
 _player_colour_2_players = ["Red", "Blue"]
+_player_colour_3_players = ["Red", "Blue", "Green"]
 _player_colour_4_players = ["Red", "Blue", "Green", "Orange"]
 _player_colour_reversed_2_players = ["Blue", "Red"]
+_player_colour_reversed_3_players = ["Green", "Blue", "Red"]
 _player_colour_reversed_4_players = ["Orange", "Green", "Blue", "Red"]
+
+def get_player_colour(number_of_players: int):
+    if number_of_players == 2:
+        return _player_colour_2_players
+    elif number_of_players == 3:
+        return _player_colour_3_players
+    elif number_of_players == 4:
+        return _player_colour_4_players
+def get_player_colour_reversed(number_of_players: int):
+    if number_of_players == 2:
+        return _player_colour_reversed_2_players
+    elif number_of_players == 3:
+        return _player_colour_reversed_3_players
+    elif number_of_players == 4:
+        return _player_colour_reversed_4_players
+
 _screen_width, _screen_height = 1920, 1080
 _delta = 0.25
 _hexagon_radius = 80
@@ -247,14 +263,19 @@ class Settlement_point:
 
     def render(self, screen) -> None:
         """Renders the hexagon on the screen"""
+        owner = self.owner
+        owner_index = owner.find("_")
+        if owner_index != -1:
+            owner = owner[:owner_index]
+
 
         if self.owner != "bot":
             if self.type == "Village":
-                imp = pygame.image.load(f"Sprites/{self.owner}/Village.png").convert_alpha()
+                imp = pygame.image.load(f"Sprites/{owner}/Village.png").convert_alpha()
                 img_rect = imp.get_rect(center=self.xy_coords)
                 screen.blit(imp, img_rect.topleft)
             elif self.type == "City":
-                imp = pygame.image.load(f"Sprites/{self.owner}/City.png").convert_alpha()
+                imp = pygame.image.load(f"Sprites/{owner}/City.png").convert_alpha()
                 img_rect = imp.get_rect(center=self.xy_coords)
                 screen.blit(imp, img_rect.topleft)
 
