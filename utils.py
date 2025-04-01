@@ -910,11 +910,6 @@ def count_points(repo: git.Repo, hexagons: [HexagonTile], local_player: int) -> 
             if road_sum + 1 > longest_road[player]:
                 longest_road[player] = road_sum + 1
     """
-    for settlement in settlements:
-        if settlement.type == "Village":
-            points += 1
-        elif settlement.type == "City":
-            points += 2
     return points
 
 def get_all_viable_bandit_positions(repo: git.Repo, hexagons: [HexagonTile], local_player: int) -> [HexagonTile]:
