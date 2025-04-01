@@ -169,8 +169,9 @@ def buy_dev_card(repo: git.Repo, local_player: int):
 
     if 0 <= index < len(dev_cards):
         # victory points are unveiled immediately
-        if index > 3:
+        if index == 4:
             update_player_hand(repo, "unveiled_cards", local_player, [0,1])
+            update_bank_development_cards(repo, [0,0,0,0,-1])
             files.append(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{local_player + 1}", "unveiled_cards"))
         else:
             diff = [0,0,0,0,0]

@@ -1,7 +1,7 @@
 import os
+import git
 from random import randrange
 
-import git
 
 from gloabl_definitions import HexagonTile, Wharfs
 from utils import (

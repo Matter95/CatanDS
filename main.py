@@ -17,7 +17,8 @@ from building import building
 from dice_roll import roll_dice
 from gloabl_definitions import (
     _screen_width,
-    _screen_height, ROOT_DIR, _number_of_players, _player_colour_2_players, HexagonTile,
+    _screen_height, ROOT_DIR, _number_of_players, _player_colour_2_players, HexagonTile, _resource_card_pool,
+    _development_card_pool, _player_building_pool,
 )
 from initializing import (
     initialize_game_state,
@@ -33,7 +34,9 @@ from utils import (
     create_git_dir,
     get_active_player,
     get_initial_active_player,
-    get_player_index, update_turn_phase, update_active_player, count_points, get_bandit,
+    get_player_index, update_turn_phase, update_active_player, count_points, get_bandit, get_player_hand,
+    get_bank_resources, get_bank_development_cards, get_discard_pile, get_all_settlements_of_player,
+    get_all_roads_of_player, get_player_buildings,
 )
 
 def sim(with_ui=False):
@@ -99,8 +102,11 @@ def sim(with_ui=False):
 
             local_player = get_player_index(repo.active_branch.name)
             merge_repos(repo)
-            do_turn(repo, local_player, hexagons)
-
+            if check_invariants(repo, hexagons):
+                do_turn(repo, local_player, hexagons)
+            else:
+                print(f"Illegal state {local_player}")
+                terminated = True
             settlement_points = get_all_settlement_points(repo, hexagons)
             road_points = get_all_road_points(repo, hexagons)
             bandit = get_bandit(repo, hexagons)
@@ -113,7 +119,11 @@ def sim(with_ui=False):
         else:
             local_player = get_player_index(repo.active_branch.name)
             merge_repos(repo)
-            do_turn(repo, local_player, hexagons)
+            if check_invariants(repo, hexagons):
+                do_turn(repo, local_player, hexagons)
+            else:
+                print(f"Illegal state {local_player}")
+                terminated = True
 
     if with_ui:
         pygame.display.quit()
@@ -202,5 +212,71 @@ def merge_repos(repo: git.Repo):
             if i != local_player:
                 repo.git.merge(f"{player}", allow_unrelated_histories=True)
 
+def check_invariants(repo: git.Repo, hexagons: [HexagonTile]) -> bool:
+    res_cards = check_conservation_of_resource_cards(repo)
+    dev_cards = check_conservation_of_development_cards(repo)
+    buildings = check_conservation_of_player_buildings(repo, hexagons)
+
+    return res_cards and dev_cards and buildings
+
+def check_conservation_of_resource_cards(repo: git.Repo) -> bool:
+    cards = get_bank_resources(repo)
+
+    for player in range(_number_of_players):
+        hand = get_player_hand(repo, "resource_cards", player)
+        for i, resource in enumerate(hand):
+            cards[i] += resource
+
+    if cards == list(_resource_card_pool):
+        return True
+    else:
+        return False
+
+def check_conservation_of_development_cards(repo: git.Repo) -> bool:
+    cards = get_bank_development_cards(repo)
+    # sum the cards of all players
+    discard_pile = get_discard_pile(repo)
+
+    for i, resource in enumerate(discard_pile):
+        cards[i] += resource
+
+    for player in range(_number_of_players):
+        bc = get_player_hand(repo, "bought_cards", player)
+        ac = get_player_hand(repo, "available_cards", player)
+        uc = get_player_hand(repo, "unveiled_cards", player)
+        for i, resource in enumerate(cards):
+            if 0 <= i < 3:
+                cards[i] += bc[i] + ac[i]
+            elif i >= 3:
+                if i == 3:
+                    cards[i] += bc[i] + ac[i] + uc[i-3]
+                elif i == 4:
+                    cards[i] += uc[i-3]
+
+    if cards == list(_development_card_pool):
+        return True
+    else:
+        return False
+
+def check_conservation_of_player_buildings(repo: git.Repo, hexagons: [HexagonTile]) -> bool:
+    invariant = True
+
+    sps = get_all_settlement_points(repo, hexagons)
+    rps = get_all_road_points(repo, hexagons)
+    for player in range(_number_of_players):
+        buildings = get_player_buildings(repo, player)
+        settlements = get_all_settlements_of_player(sps, player)
+        roads = get_all_roads_of_player(rps, player)
+
+        buildings[0] += len(roads)
+        for sp in settlements:
+            if sp.type in "Village":
+                buildings[1] += 1
+            elif sp.type in "City":
+                buildings[2] += 1
+
+        if buildings != list(_player_building_pool):
+            invariant = False
+    return invariant
 
 sim(True)
