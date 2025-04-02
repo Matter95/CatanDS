@@ -21,6 +21,14 @@ from utils import (
 
 
 def trading(repo: git.Repo, hexagons: [HexagonTile]):
+    """
+    Shows the projekt summary list.
+
+    Parameters
+    ----------
+    repo: current repo
+    hexagons: map tiles
+    """
     local_player = get_player_index(repo.active_branch.name)
     resources = get_player_hand(repo, "resource_cards", local_player)
     # already used up all villages, should build cities
@@ -133,6 +141,14 @@ def trading(repo: git.Repo, hexagons: [HexagonTile]):
                     repo.git.reset("--hard", "HEAD")
 
 def finish_trading(repo: git.Repo, local_player: int):
+    """
+    Finished the trading phase.
+
+    Parameters
+    ----------
+    repo: current repo
+    local_player: player number
+    """
     # next phase
     update = update_turn_phase(repo)
 

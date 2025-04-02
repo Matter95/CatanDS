@@ -24,6 +24,15 @@ from utils import (
 )
 
 def roll_dice(repo: git.Repo, hexagons: [HexagonTile]):
+    """
+    Starts the roll dice phase. Players earn resources, loose resources or/and move the bandit. Reconciles the
+    concurrency happening when players need to choose which resource cards to lose.
+
+    Parameters
+    ----------
+    repo: current repo
+    hexagons: map tiles
+    """
     author_name = repo.active_branch.name
     author = git.Actor(author_name, f"{author_name}@git.com")
     active_player = get_active_player(repo)
@@ -243,7 +252,18 @@ def roll_dice(repo: git.Repo, hexagons: [HexagonTile]):
                 print("update failed in dice roll result")
                 repo.git.reset("--hard", "HEAD")
 
-def loose_cards(repo: git.Repo, cards: int, resources: [int], local_player: int, parent):
+def loose_cards(repo: git.Repo, cards: int, resources: [int], local_player: int, parent: git.Commit):
+    """
+    Players choose which cards they lose given a 7 as dice result while a player owns more than 7 cards.
+
+    Parameters
+    ----------
+    repo: current repo
+    cards: a players resource cards summed up
+    resources: a players resource cards
+    local_player: player number
+    parent: parent commit
+    """
     loss = floor(cards / 2)
     diff = randomly_choose_loss(loss, resources)
 

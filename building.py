@@ -3,7 +3,6 @@ from random import randrange
 
 import git
 
-from dice_roll import loose_cards
 from gloabl_definitions import HexagonTile, _cost_road, _cost_village, _cost_city, Road_point, Settlement_point, \
     _cost_dev_card, _dev_card_iid, _number_of_players
 from utils import (
@@ -38,6 +37,14 @@ from utils import (
 
 
 def building(repo: git.Repo, hexagons: [HexagonTile]):
+    """
+    Start the building phase. Check if the player can build something if not, end phase.
+
+    Parameters
+    ----------
+    repo : current repo
+    hexagons: map tiles
+    """
     settlement_points = get_all_settlement_points(repo, hexagons)
     road_points = get_all_road_points(repo, hexagons)
     bandit = get_bandit(repo, hexagons)
@@ -57,10 +64,17 @@ def building(repo: git.Repo, hexagons: [HexagonTile]):
 
 
 def finish_building(repo: git.Repo, local_player: int):
+    """
+    End the building phase.
+
+    Parameters
+    ----------
+    repo : current repo
+    local_player: cards the player can currently play
+    """
     # next phase
     update = update_turn_phase(repo)
     update = update and update_active_player(repo)
-
 
     if update:
         # add files to index
@@ -80,7 +94,17 @@ def finish_building(repo: git.Repo, local_player: int):
         print("update failed in finish building")
         repo.git.reset("--hard", "HEAD")
 
+
 def build_road(repo: git.Repo, local_player: int, rp: Road_point):
+    """
+    Build a road and update game state accordingly.
+
+    Parameters
+    ----------
+    repo : current repo
+    local_player: cards the player can currently play
+    rp: chosen road point to build a road on
+    """
     files = [
         os.path.join(repo.working_dir, "state", "game", "bank", "resource_cards"),
         os.path.join(repo.working_dir, "state", "game", "road_points"),
@@ -111,13 +135,33 @@ def build_road(repo: git.Repo, local_player: int, rp: Road_point):
         print("update failed in build road")
         repo.git.reset("--hard", "HEAD")
 
+
 def build_road_free(repo: git.Repo, local_player: int, rp: Road_point) -> bool:
+    """
+    Build a road for free (effect of development card "road-building")
+
+    Parameters
+    ----------
+    repo : current repo
+    local_player: cards the player can currently play
+    rp: chosen road point to build a road on
+    """
     # update state
     update = update_road_point(repo, rp.index, repo.active_branch.name)
     update = update and update_player_buildings(repo, local_player, [-1, 0, 0])
     return update
 
+
 def build_village(repo: git.Repo, local_player: int, sp: Settlement_point):
+    """
+    Build a village and update the game state accordingly
+
+    Parameters
+    ----------
+    repo : current repo
+    local_player: cards the player can currently play
+    sp: chosen settlement point to build a village on
+    """
     files = [
         os.path.join(repo.working_dir, "state", "game", "bank", "resource_cards"),
         os.path.join(repo.working_dir, "state", "game", "settlement_points"),
@@ -148,7 +192,17 @@ def build_village(repo: git.Repo, local_player: int, sp: Settlement_point):
         print("update failed in build village")
         repo.git.reset("--hard", "HEAD")
 
+
 def build_city(repo: git.Repo, local_player: int, village: Settlement_point):
+    """
+    Build a city and update the game state accordingly
+
+    Parameters
+    ----------
+    repo : current repo
+    local_player: cards the player can currently play
+    village: chosen village to upgrade to a city
+    """
     files = [
         os.path.join(repo.working_dir, "state", "game", "bank", "resource_cards"),
         os.path.join(repo.working_dir, "state", "game", "settlement_points"),
@@ -178,15 +232,24 @@ def build_city(repo: git.Repo, local_player: int, village: Settlement_point):
         print("update failed in build city")
         repo.git.reset("--hard", "HEAD")
 
+
 def buy_dev_card(repo: git.Repo, local_player: int):
+    """
+    Buy a development card and add it to the player's hand.
+
+    Parameters
+    ----------
+    repo : current repo
+    local_player: cards the player can currently play
+    """
     files = [
         os.path.join(repo.working_dir, "state", "game", "bank", "resource_cards"),
         os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{local_player + 1}",
-                                  "resource_cards")
+                     "resource_cards")
     ]
 
     dev_cards = get_bank_development_cards(repo)
-
+    update = True
     index = -1
     viable_card = False
     while not viable_card:
@@ -198,36 +261,56 @@ def buy_dev_card(repo: git.Repo, local_player: int):
     if 0 <= index < len(dev_cards):
         # victory points are unveiled immediately
         if index == 4:
-            update_player_hand(repo, "unveiled_cards", local_player, [0,1])
-            update_bank_development_cards(repo, [0,0,0,0,-1])
-            files.append(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{local_player + 1}", "unveiled_cards"))
+            update = update and update_player_hand(repo, "unveiled_cards", local_player, [0, 1])
+            update = update and update_bank_development_cards(repo, [0, 0, 0, 0, -1])
+            files.append(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{local_player + 1}",
+                                      "unveiled_cards"))
         else:
-            diff = [0,0,0,0,0]
+            diff = [0, 0, 0, 0, 0]
             diff[index] += 1
 
-            files.append(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{local_player + 1}", "bought_cards"))
+            files.append(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{local_player + 1}",
+                                      "bought_cards"))
             files.append(os.path.join(repo.working_dir, "state", "game", "bank", "development_cards"))
-            update_player_hand(repo, "bought_cards", local_player, diff[0:4])
-            update_bank_development_cards(repo, negate_int_arr(diff))
+            update = update and update_player_hand(repo, "bought_cards", local_player, diff[0:4])
+            update = update and update_bank_development_cards(repo, negate_int_arr(diff))
 
     # update state
-    update_player_hand(repo, "resource_cards", local_player, negate_int_arr(list(_cost_dev_card)))
-    update_bank_resources(repo, list(_cost_dev_card))
+    update = update and update_player_hand(repo, "resource_cards", local_player, negate_int_arr(list(_cost_dev_card)))
+    update = update and update_bank_resources(repo, list(_cost_dev_card))
 
-    for file in files:
-        repo.index.add(file)
+    if update:
+        for file in files:
+            repo.index.add(file)
 
-    author_name = repo.active_branch.name
-    author = git.Actor(author_name, f"{author_name}@git.com")
-    repo.index.commit(
-        f"buy_dev_card_player{local_player + 1}",
-        [repo.head.commit],
-        True,
-        author,
-        author,
-    )
+        author_name = repo.active_branch.name
+        author = git.Actor(author_name, f"{author_name}@git.com")
+        repo.index.commit(
+            f"buy_dev_card_player{local_player + 1}",
+            [repo.head.commit],
+            True,
+            author,
+            author,
+        )
+    else:
+        print("update failed in buy dev card")
+        repo.git.reset("--hard", "HEAD")
 
-def try_to_build(repo: git.Repo, resources: [int], local_player: int, settlement_points: [Settlement_point], viable_rp: [Road_point], viable_sp: [Settlement_point] ,tried: [str]):
+def try_to_build(repo: git.Repo, resources: [int], local_player: int, settlement_points: [Settlement_point],
+                 viable_rp: [Road_point], viable_sp: [Settlement_point], tried: [str]):
+    """
+    Play a development card and update the state of the game depending on the card effect.
+
+    Parameters
+    ----------
+    repo: current repo
+    resources: (int) button control setting
+    local_player: cards the player can currently play
+    settlement_points: all points on the map where settlements can be built
+    viable_rp: points the player can place a road
+    viable_sp: points the player can place a settlement
+    tried: buildings that were tried to be built but failed
+    """
     villages_available = get_player_buildings_type(repo, "Village", local_player)
 
     # can build a city
@@ -280,6 +363,17 @@ def try_to_build(repo: git.Repo, resources: [int], local_player: int, settlement
 
 
 def play_card(repo: git.Repo, playable_cards, local_player: int, viable_rp: [Road_point], hexagons: [HexagonTile]):
+    """
+    Play a development card and update the state of the game depending on the card effect.
+
+    Parameters
+    ----------
+    repo: current repo
+    playable_cards: (int) button control setting
+    local_player: cards the player can currently play
+    viable_rp: points the player can place a road
+    hexagons: map tiles
+    """
     update = True
     type = -1
     for i, card in enumerate(playable_cards):
@@ -292,7 +386,8 @@ def play_card(repo: git.Repo, playable_cards, local_player: int, viable_rp: [Roa
     if type == 0:
         name = "Monopoly"
         for player in range(_number_of_players):
-            files.append(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{player + 1}", "resource_cards"))
+            files.append(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{player + 1}",
+                                      "resource_cards"))
 
         # pick a resource
         resource = randrange(0, 5)
@@ -301,7 +396,7 @@ def play_card(repo: git.Repo, playable_cards, local_player: int, viable_rp: [Roa
         for player in range(_number_of_players):
             if player != local_player:
                 player_has = get_player_hand(repo, "resource_cards", player)
-                diff = [0,0,0,0,0]
+                diff = [0, 0, 0, 0, 0]
                 diff[resource] += player_has[resource]
                 update = update_player_hand(repo, "resource_cards", local_player, diff)
                 update = update and update_player_hand(repo, "resource_cards", player, negate_int_arr(diff))
@@ -312,9 +407,9 @@ def play_card(repo: git.Repo, playable_cards, local_player: int, viable_rp: [Roa
         files.append(os.path.join(repo.working_dir, "state", "game", "bank", "resource_cards"))
         files.append(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{local_player + 1}",
                                   "resource_cards"))
-        diff = [0,0,0,0,0]
+        diff = [0, 0, 0, 0, 0]
         for _ in range(2):
-            resource = randrange(0,5)
+            resource = randrange(0, 5)
             diff[resource] += 1
         update = update and update_player_hand(repo, "resource_cards", local_player, diff)
         update = update and update_bank_resources(repo, negate_int_arr(diff))
@@ -323,12 +418,14 @@ def play_card(repo: git.Repo, playable_cards, local_player: int, viable_rp: [Roa
         name = "Road-Building"
         files.append(os.path.join(repo.working_dir, "state", "game", "road_points"))
         files.append(os.path.join(repo.working_dir, "state", "game", "player_buildings", f"player_{local_player + 1}"))
-        rp = viable_rp[randrange(0, len(viable_rp))]
-        rp2 = viable_rp[randrange(0, len(viable_rp))]
-        while rp == rp2:
-            rp2 = viable_rp[randrange(0, len(viable_rp))]
 
+        # choose first road
+        rp = viable_rp[randrange(0, len(viable_rp))]
         update = update and build_road_free(repo, local_player, rp)
+        viable_rp.remove(rp)
+
+        # choose second road
+        rp2 = viable_rp[randrange(0, len(viable_rp))]
         update = update and build_road_free(repo, local_player, rp2)
 
     # "Knight"
@@ -362,16 +459,17 @@ def play_card(repo: git.Repo, playable_cards, local_player: int, viable_rp: [Roa
             files.append(os.path.join(repo.working_dir, "state", "game", "bandit"))
 
     # move card to discard pile or unveiled cards
-    files.append(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{local_player + 1}", "available_cards"))
+    files.append(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{local_player + 1}",
+                              "available_cards"))
     if type < 3:
-        diff = [0,0,0,0]
+        diff = [0, 0, 0, 0]
         diff[type] += 1
         update = update and update_discard_pile(repo, diff[0:3])
         update = update and update_player_hand(repo, "available_cards", local_player, negate_int_arr(diff))
         files.append(os.path.join(repo.working_dir, "state", "game", "discard_pile"))
     else:
-        update = update and update_player_hand(repo, "available_cards", local_player, [0,0,0,-1])
-        update = update and update_player_hand(repo, "unveiled_cards", local_player, [1,0])
+        update = update and update_player_hand(repo, "available_cards", local_player, [0, 0, 0, -1])
+        update = update and update_player_hand(repo, "unveiled_cards", local_player, [1, 0])
         files.append(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{local_player + 1}",
                                   "unveiled_cards"))
 

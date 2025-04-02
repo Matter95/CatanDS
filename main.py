@@ -4,8 +4,7 @@ from math import ceil
 import git
 import pygame
 from git import Repo, NoSuchPathError
-from pygame import KEYUP, K_ESCAPE, K_RETURN
-from pygame.event import EventType
+from pygame import KEYUP, K_ESCAPE
 
 from UI import (
     init_hexagons,
@@ -48,7 +47,16 @@ from utils import (
     get_player_buildings,
 )
 
+
 def sim(repo_folder_nr=-1, with_ui=False):
+    """
+    Simulates a game of Catan with or without UI. Writes a repo into Catan_{repo_folder_nr}
+
+    Parameters
+    ----------
+    repo_folder_nr : simulation number
+    with_ui : activates pygame UI
+    """
     if with_ui:
         pygame.init()
         pygame.font.init()
@@ -74,7 +82,7 @@ def sim(repo_folder_nr=-1, with_ui=False):
     if init_state is None:
         settlement_points = init_settlement_points(hexagons)
         road_points = init_road_points(hexagons)
-        repo = create_git_dir(f"Catan_{repo_folder_nr}")
+        repo = create_git_dir(f"Red_{repo_folder_nr}")
         # initialize map and git folders
         player_nr = 0
         while player_nr < _number_of_players:
@@ -143,6 +151,15 @@ def sim(repo_folder_nr=-1, with_ui=False):
 
 
 def switch_player(repo: git.Repo, local_player: int, repo_folder_nr: int):
+    """
+    Switches active player to the next player in line and switches to said players git branch.
+
+    Parameters
+    ----------
+    repo: current player
+    local_player: player branch we are currently on
+    repo_folder_nr: simulation number
+    """
     # get next player
     next_player = (local_player + 1) % _number_of_players
     # change repo
@@ -150,6 +167,17 @@ def switch_player(repo: git.Repo, local_player: int, repo_folder_nr: int):
 
 
 def do_turn(repo: git.Repo, local_player: int, hexagons: [HexagonTile], repo_folder_nr):
+    """
+    Logic that forces a player to take the action of the given turn phase and only allows the active player
+    to change the state of the game.
+
+    Parameters
+    ----------
+    repo: current player
+    local_player: player branch we are currently on
+    hexagons: map tiles
+    repo_folder_nr: simulation number
+    """
     switch = False
     initial_phase = get_initial_phase(repo)
     turn_phase = get_turn_phase(repo)
@@ -206,7 +234,16 @@ def do_turn(repo: git.Repo, local_player: int, hexagons: [HexagonTile], repo_fol
         switch_player(repo, local_player, repo_folder_nr)
     return False
 
+
 def merge_repos(repo: git.Repo, repo_folder_nr: int):
+    """
+    merges all branches of the different players
+
+    Parameters
+    ----------
+    repo : current repository
+    repo_folder_nr : current simulation number
+    """
     turn_phase = get_turn_phase(repo)
     local_player = get_player_index(repo.active_branch.name)
 
@@ -233,14 +270,40 @@ def merge_repos(repo: git.Repo, repo_folder_nr: int):
                 else:
                     repo.git.merge(f"{player}_{repo_folder_nr}", allow_unrelated_histories=True)
 
+
 def check_invariants(repo: git.Repo, hexagons: [HexagonTile]) -> bool:
+    """
+    Checks all invariants.
+
+    Parameters
+    ----------
+    repo : current repository
+    hexagons : map tiles
+
+    Returns
+    -------
+    If invariants hold, returns true, else returns false
+    """
     res_cards = check_conservation_of_resource_cards(repo)
     dev_cards = check_conservation_of_development_cards(repo)
     buildings = check_conservation_of_player_buildings(repo, hexagons)
 
     return res_cards and dev_cards and buildings
 
+
 def check_conservation_of_resource_cards(repo: git.Repo) -> bool:
+    """
+    Invariant for resource cards. Checks if cards of all the players hand and bank are equal to the
+    whole resource card pool.
+
+    Parameters
+    ----------
+    repo : current repository
+
+    Returns
+    -------
+    If invariant holds, returns true, else returns false
+    """
     cards = get_bank_resources(repo)
 
     for player in range(_number_of_players):
@@ -254,7 +317,20 @@ def check_conservation_of_resource_cards(repo: git.Repo) -> bool:
         print(f"illegal state res cards: current: {cards}; expected: {_resource_card_pool}")
         return False
 
+
 def check_conservation_of_development_cards(repo: git.Repo) -> bool:
+    """
+    Invariant for development cards. Checks if cards in the players' hands, bank and discard pile are equal to the
+    whole development card pool.
+
+    Parameters
+    ----------
+    repo : current repository
+
+    Returns
+    -------
+    If invariant holds, returns true, else returns false
+    """
     cards = get_bank_development_cards(repo)
     # sum the cards of all players
     discard_pile = get_discard_pile(repo)
@@ -271,9 +347,9 @@ def check_conservation_of_development_cards(repo: git.Repo) -> bool:
                 cards[i] += bc[i] + ac[i]
             elif i >= 3:
                 if i == 3:
-                    cards[i] += bc[i] + ac[i] + uc[i-3]
+                    cards[i] += bc[i] + ac[i] + uc[i - 3]
                 elif i == 4:
-                    cards[i] += uc[i-3]
+                    cards[i] += uc[i - 3]
 
     if cards == list(_development_card_pool):
         return True
@@ -281,7 +357,21 @@ def check_conservation_of_development_cards(repo: git.Repo) -> bool:
         print(f"illegal state dev cards: current: {cards}; expected: {_development_card_pool}")
         return False
 
+
 def check_conservation_of_player_buildings(repo: git.Repo, hexagons: [HexagonTile]) -> bool:
+    """
+    Invariant for player buildings. Checks if pieces on the board and in the
+    players building pool are equivalent to the starting amount of buildings.
+
+    Parameters
+    ----------
+    repo : current repository
+    hexagons : map tiles
+
+    Returns
+    -------
+    If invariant holds, returns true, else returns false
+    """
     invariant = True
 
     sps = get_all_settlement_points(repo, hexagons)
@@ -305,6 +395,15 @@ def check_conservation_of_player_buildings(repo: git.Repo, hexagons: [HexagonTil
 
 
 def get_stats(repo_folder):
+    """
+    Gather statistics from the game runs and writes it into the stats file
+
+    Parameters
+    ----------
+    repo_folder : name of the repo to gather stats from
+
+    -------
+    """
     repo = Repo(os.path.join(ROOT_DIR, repo_folder))
     total_bytes = 0
     nr_commits = 0
@@ -323,12 +422,12 @@ def get_stats(repo_folder):
         with open(os.path.join(ROOT_DIR, "stats"), "x") as f:
             pass
     with open(os.path.join(ROOT_DIR, "stats"), "a") as f:
-        f.write(f"{total_bytes/1000};{nr_commits};{ceil(nr_rounds / _number_of_players)}\n")
+        f.write(f"{total_bytes / 1000};{nr_commits};{ceil(nr_rounds / _number_of_players)}\n")
 
 
 def simulate(number_of_sims: int):
     for i in range(number_of_sims):
-        #sim(i)
-        get_stats(f"Catan_{i}")
+        sim(i)
+
 
 simulate(5)

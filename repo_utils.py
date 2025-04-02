@@ -3,6 +3,7 @@ import os.path
 import git
 from git import Repo
 
+
 def init_repo(path: str, repo_name: str, author: str, email: str, bare: bool) -> git.Repo:
     """
     initialize a git repository with the given path and name
@@ -34,21 +35,6 @@ def init_repo(path: str, repo_name: str, author: str, email: str, bare: bool) ->
 
     return repo
 
-
-def fetch_all_remotes(repo: git.Repo):
-    """
-    fetches all data from remotes
-    :param repo:
-    :return:
-    """
-    for remote in repo.remotes:
-        remote.fetch()
-
-def clear_index_of_files(repo: git.Repo):
-    index_files = [item.path for item in repo.index.entries.values()]
-
-    if index_files:
-        repo.index.remove(index_files, working_tree=False)
 
 def get_all_loss_references(repo: git.Repo, commit: git.Commit):
     children = []

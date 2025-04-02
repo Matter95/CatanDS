@@ -10,8 +10,12 @@ from gloabl_definitions import (
     _left_most_xy_coords,
     _hexagon_radius,
     _hex_num_width,
-    _hex_num_height, HexagonTile, Road_point, Settlement_point,
-    get_player_colour, _number_of_players
+    _hex_num_height,
+    HexagonTile,
+    Road_point,
+    Settlement_point,
+    get_player_colour,
+    _number_of_players
 )
 import pygame
 import pygame.gfxdraw
