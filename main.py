@@ -44,7 +44,7 @@ from utils import (
     get_discard_pile,
     get_all_settlements_of_player,
     get_all_roads_of_player,
-    get_player_buildings,
+    get_player_buildings, has_longest_road, has_mightiest_army,
 )
 
 
@@ -70,7 +70,8 @@ def sim(repo_folder_nr=-1, with_ui=False):
         render_static(game, hexagons)
 
     hexagons = init_hexagons()
-
+    longest_road = -1
+    mightiest_army = -1
     # check if there is already a game around
     try:
         repo = Repo(os.path.join(ROOT_DIR, f"Catan_{repo_folder_nr}"))
@@ -82,16 +83,13 @@ def sim(repo_folder_nr=-1, with_ui=False):
     if init_state is None:
         settlement_points = init_settlement_points(hexagons)
         road_points = init_road_points(hexagons)
-        repo = create_git_dir(f"Red_{repo_folder_nr}")
+        repo = create_git_dir(f"Catan_{repo_folder_nr}")
         # initialize map and git folders
         player_nr = 0
         while player_nr < _number_of_players:
             # create a branch for each player
             player_name = get_player_colour(_number_of_players)[player_nr]
-            if repo_folder_nr == -1:
-                repo.git.checkout("-b", f"{player_name}")
-            else:
-                repo.git.checkout("-b", f"{player_name}_{repo_folder_nr}")
+            repo.git.checkout("-b", f"{player_name}_{repo_folder_nr}")
             if player_nr == 0:
                 initialize_game_state(repo, settlement_points, road_points, player_name)
             else:
@@ -122,7 +120,8 @@ def sim(repo_folder_nr=-1, with_ui=False):
             local_player = get_player_index(repo.active_branch.name)
             merge_repos(repo, repo_folder_nr)
             if check_invariants(repo, hexagons):
-                if do_turn(repo, local_player, hexagons, repo_folder_nr):
+                longest_road, mightiest_army, finished = do_turn(repo, local_player, hexagons, repo_folder_nr, longest_road, mightiest_army)
+                if finished:
                     terminated = True
             else:
                 print(f"Illegal state {local_player}")
@@ -140,12 +139,12 @@ def sim(repo_folder_nr=-1, with_ui=False):
             local_player = get_player_index(repo.active_branch.name)
             merge_repos(repo, repo_folder_nr)
             if check_invariants(repo, hexagons):
-                if do_turn(repo, local_player, hexagons, repo_folder_nr):
+                longest_road, mightiest_army, finished = do_turn(repo, local_player, hexagons, repo_folder_nr, longest_road, mightiest_army)
+                if finished:
                     terminated = True
             else:
                 print(f"Illegal state {local_player}")
                 terminated = True
-
     if with_ui:
         pygame.display.quit()
 
@@ -166,7 +165,7 @@ def switch_player(repo: git.Repo, local_player: int, repo_folder_nr: int):
     repo.git.checkout(f"{get_player_colour(_number_of_players)[next_player]}_{repo_folder_nr}")
 
 
-def do_turn(repo: git.Repo, local_player: int, hexagons: [HexagonTile], repo_folder_nr):
+def do_turn(repo: git.Repo, local_player: int, hexagons: [HexagonTile], repo_folder_nr: int, longest_road: int, mightiest_army: int):
     """
     Logic that forces a player to take the action of the given turn phase and only allows the active player
     to change the state of the game.
@@ -183,7 +182,7 @@ def do_turn(repo: git.Repo, local_player: int, hexagons: [HexagonTile], repo_fol
     turn_phase = get_turn_phase(repo)
 
     if turn_phase == "top":
-        return True
+        return -1, -1, True
     # we are in the initial phase
     elif turn_phase == "bot":
         active_player = get_initial_active_player(repo)
@@ -211,7 +210,11 @@ def do_turn(repo: git.Repo, local_player: int, hexagons: [HexagonTile], repo_fol
             if turn_phase == "building":
                 building(repo, hexagons)
 
-                points = count_points(repo, hexagons, local_player)
+                if has_longest_road(repo, local_player, hexagons):
+                    longest_road = local_player
+                if has_mightiest_army(repo, local_player):
+                    mightiest_army = local_player
+                points = count_points(repo, hexagons, local_player, longest_road, mightiest_army)
                 if points >= 10:
                     update_turn_phase(repo, True)
                     repo.index.add(os.path.join(os.path.join(repo.working_dir, "state", "game", "turn_phase")))
@@ -232,7 +235,7 @@ def do_turn(repo: git.Repo, local_player: int, hexagons: [HexagonTile], repo_fol
 
     if switch:
         switch_player(repo, local_player, repo_folder_nr)
-    return False
+    return mightiest_army, longest_road, False
 
 
 def merge_repos(repo: git.Repo, repo_folder_nr: int):
@@ -247,17 +250,14 @@ def merge_repos(repo: git.Repo, repo_folder_nr: int):
     turn_phase = get_turn_phase(repo)
     local_player = get_player_index(repo.active_branch.name)
 
-    # do not merge when a loss choice is being made
+    # do not merge when a loss choice is being made (conflict is resolved elsewhere)
     if turn_phase == "dice_roll":
         if not repo.head.commit.message.__contains__("empty") and not repo.head.commit.message.__contains__(
                 "loss"):
             # merge with other branches
             for i, player in enumerate(get_player_colour(_number_of_players)):
                 if i != local_player:
-                    if repo_folder_nr == -1:
-                        repo.git.merge(f"{player}", allow_unrelated_histories=True)
-                    else:
-                        repo.git.merge(f"{player}_{repo_folder_nr}", allow_unrelated_histories=True)
+                    repo.git.merge(f"{player}_{repo_folder_nr}", allow_unrelated_histories=True)
 
         else:
             repo.git.fetch()
@@ -265,10 +265,7 @@ def merge_repos(repo: git.Repo, repo_folder_nr: int):
         # merge with other branches
         for i, player in enumerate(get_player_colour(_number_of_players)):
             if i != local_player:
-                if repo_folder_nr == -1:
-                    repo.git.merge(f"{player}", allow_unrelated_histories=True)
-                else:
-                    repo.git.merge(f"{player}_{repo_folder_nr}", allow_unrelated_histories=True)
+                repo.git.merge(f"{player}_{repo_folder_nr}", allow_unrelated_histories=True)
 
 
 def check_invariants(repo: git.Repo, hexagons: [HexagonTile]) -> bool:
@@ -427,7 +424,7 @@ def get_stats(repo_folder):
 
 def simulate(number_of_sims: int):
     for i in range(number_of_sims):
-        sim(i)
+        sim(i, True)
 
 
-simulate(5)
+simulate(1)

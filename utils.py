@@ -1559,25 +1559,22 @@ def is_adjacent_road_to_road(settlement_points: [Settlement_point], point: Road_
     return False
 
 
-def count_points(repo: git.Repo, hexagons: [HexagonTile], local_player: int) -> int:
+def has_mightiest_army(repo: git.Repo, local_player: int) -> bool:
     """
-    Counts the victory points of a given player.
+    Checks if the given player has the mightiest army.
 
     Parameters
     ----------
     repo: current repo
-    hexagons: map tiles
     local_player: player number
 
     Returns
     -------
-    victory points
+    has mightiest army
     """
-    points = 0
-
     uc = get_player_hand(repo, "unveiled_cards", local_player)
     knights = uc[0]
-    vp = uc[1]
+    largest_army = False
 
     # eligible for largest army
     if knights > 3:
@@ -1587,10 +1584,106 @@ def count_points(repo: git.Repo, hexagons: [HexagonTile], local_player: int) -> 
                 player_uc = get_player_hand(repo, "unveiled_cards", player)
                 if knights < player_uc[0]:
                     largest_army = False
-        if largest_army:
-            points += 2
+    return largest_army
 
-    points += vp
+
+def has_longest_road(repo: git.Repo, local_player: int, hexagons: [HexagonTile]) -> bool:
+    """
+    Checks if the given player has the longest road. The longest road needs to be at least 5
+    continuous pieces of road.
+
+    Parameters
+    ----------
+    repo: current repo
+    local_player: player number
+    hexagons: map tiles
+
+    Returns
+    -------
+    has longest road
+    """
+    sps = get_all_settlement_points(repo, hexagons)
+    rps = get_all_road_points(repo, hexagons)
+
+    longest_road = []
+    for player in range(_number_of_players):
+        longest_road.append([])
+        roads = get_all_roads_of_player(rps, player)
+        if local_player == player:
+            if len(roads) < 5:
+                return False
+        else:
+            if len(roads) < 5:
+                longest_road[player] = 0
+                continue
+        neighbours = []
+        # init list
+        for _ in rps:
+            neighbours.append([])
+        # find all neighbours for all roads
+        for road in roads:
+            for neighbour in roads:
+                if road.index == neighbour.index:
+                    continue
+                else:
+                    if is_adjacent_road_to_road(sps, road, neighbour):
+                        neighbours[road.index].append(neighbour)
+        visited = []
+        # choose random road to start
+        path_sum = [0, 0, 0, 0]
+        i = 0
+        todo = []
+        while len(visited) != len(roads):
+            road = roads[i]
+            if road in visited:
+                i += 1
+                continue
+            paths = []
+            index = 0
+            for neigbour in neighbours[road.index]:
+                paths.append(neigbour)
+                todo.append(neigbour)
+            while todo:
+                path_sum[index] += 1
+                road = todo.pop()
+                if road in paths:
+                    index += 1
+                if road not in visited:
+                    visited.append(road)
+                    for neighbour in neighbours[road.index]:
+                        if neigbour not in visited:
+                            todo.append(neighbour)
+
+        longest_road[player] = max(path_sum)
+
+    print(longest_road)
+    if longest_road[local_player] == max(longest_road) and longest_road[local_player] >= 5:
+        return True
+    else:
+        return False
+
+
+def count_points(repo: git.Repo, hexagons: [HexagonTile], local_player: int, longest_road: int,
+                 mightiest_army: int) -> int:
+    """
+    Counts the victory points of a given player.
+
+    Parameters
+    ----------
+    repo: current repo
+    hexagons: map tiles
+    local_player: player number
+    longest_road: player with the longest road
+    mightiest_army: player with the mightiest army
+
+    Returns
+    -------
+    victory points
+    """
+    points = 0
+
+    uc = get_player_hand(repo, "unveiled_cards", local_player)
+    points += uc[1]
 
     sps = get_all_settlement_points(repo, hexagons)
     settlements = get_all_settlements_of_player(sps, local_player)
@@ -1600,43 +1693,13 @@ def count_points(repo: git.Repo, hexagons: [HexagonTile], local_player: int) -> 
             points += 1
         elif settlement.type == "City":
             points += 2
-    """
-    rps = get_all_road_points(repo, hexagons)
-    longest_road = []
-    for player in range(_number_of_players):
-        longest_road.append([])
-        roads = get_all_roads_of_player(rps, local_player)
-        neighbours = []
-        # init list
-        for road in rps:
-            neighbours.append([])
-        # find all neighbours for all roads
-        for road in roads:
-            for neighbour in roads:
-                if road == neighbour:
-                    continue
-                else:
-                    if is_adjacent_road_to_road(sps, road, neighbour):
-                        neighbours[road.index].append(road)
-        visited = []
-        longest_road[player] = 1
-        while len(visited) < len(roads):
-            road_sum = 0
-            # pick a road that has not been visited yet
-            for road in roads:
-                # if the road is a leaf and was not visited yet
-                if road not in visited and len(neighbours[road.index]) == 0:
-                    visited.append(road)
-                    continue
-                if road not in visited and len(neighbours[road.index]) == 1:
-                    visited.append(road)
-                    new_visited, road_sum = choose_longest_road(visited, road, neighbours)
-                    for vis in new_visited:
-                        if vis not in visited:
-                            visited.append(vis)
-            if road_sum + 1 > longest_road[player]:
-                longest_road[player] = road_sum + 1
-    """
+
+    if local_player == longest_road:
+        points += 2
+
+    if local_player == mightiest_army:
+        points += 2
+
     return points
 
 

@@ -3,7 +3,7 @@ from unittest import TestCase
 
 from git import Repo, NoSuchPathError, repo
 
-from Tests.test_utils import delete_repo
+from Tests.test_repo_utils import delete_repo
 from UI import init_settlement_points, init_road_points, init_hexagons
 from gloabl_definitions import TEST_DIR
 from initializing import initialize_game_state
