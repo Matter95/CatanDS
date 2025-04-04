@@ -430,4 +430,4 @@ def simulate(number_of_sims: int):
         sim(i)
 
 
-simulate(5)
+sim(0, True)
