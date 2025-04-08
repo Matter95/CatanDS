@@ -44,7 +44,7 @@ from utils import (
     get_discard_pile,
     get_all_settlements_of_player,
     get_all_roads_of_player,
-    get_player_buildings, has_longest_road, has_mightiest_army,
+    get_player_buildings, get_longest_road, get_mightiest_army,
 )
 
 
@@ -121,8 +121,6 @@ def sim(repo_folder_nr=-1, with_ui=False):
             merge_repos(repo, repo_folder_nr)
             if check_invariants(repo, hexagons):
                 longest_road, mightiest_army, finished = do_turn(repo, local_player, hexagons, repo_folder_nr, longest_road, mightiest_army)
-                if finished:
-                    terminated = True
             else:
                 print(f"Illegal state {local_player}")
                 terminated = True
@@ -210,10 +208,16 @@ def do_turn(repo: git.Repo, local_player: int, hexagons: [HexagonTile], repo_fol
             if turn_phase == "building":
                 building(repo, hexagons)
 
-                if has_longest_road(repo, local_player, hexagons):
-                    longest_road = local_player
-                if has_mightiest_army(repo, local_player):
-                    mightiest_army = local_player
+                temp_road = get_longest_road(repo, local_player, hexagons)
+                if temp_road != -1:
+                    longest_road = temp_road
+                else:
+                    longest_road = -1
+                temp_army = get_mightiest_army(repo, local_player)
+                if temp_army != -1:
+                    mightiest_army = temp_army
+                else:
+                    mightiest_army = -1
                 points = count_points(repo, hexagons, local_player, longest_road, mightiest_army)
                 if points >= 10:
                     update_turn_phase(repo, True)
@@ -228,7 +232,6 @@ def do_turn(repo: git.Repo, local_player: int, hexagons: [HexagonTile], repo_fol
                         author,
                         author,
                     )
-
                     switch = True
         else:
             switch = True
@@ -424,7 +427,11 @@ def get_stats(repo_folder):
 
 def simulate(number_of_sims: int):
     for i in range(number_of_sims):
-        sim(i, True)
+        sim(i, False)
+
+def take_statistics(number_of_sims: int):
+    for i in range(number_of_sims):
+        get_stats(f"Catan_{i}")
 
 
 simulate(1)

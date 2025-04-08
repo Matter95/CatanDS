@@ -1553,13 +1553,13 @@ def is_adjacent_road_to_road(settlement_points: [Settlement_point], point: Road_
             sp_neighbour.append(sp)
 
     for sp in sp_neighbour:
-        # neighbour road is adjacent to the same settlement point
-        if is_adjacent_road_to_settlement(sp, neighbour):
+        # neighbour road is adjacent to the same settlement point and not from an enemy settlement
+        if is_adjacent_road_to_settlement(sp, neighbour) and (sp.owner == point.owner or sp.owner == "bot"):
             return True
     return False
 
 
-def has_mightiest_army(repo: git.Repo, local_player: int) -> bool:
+def get_mightiest_army(repo: git.Repo, local_player: int) -> int:
     """
     Checks if the given player has the mightiest army.
 
@@ -1574,20 +1574,41 @@ def has_mightiest_army(repo: git.Repo, local_player: int) -> bool:
     """
     uc = get_player_hand(repo, "unveiled_cards", local_player)
     knights = uc[0]
-    largest_army = False
+    largest_army = [0,0,0,0]
 
     # eligible for largest army
-    if knights > 3:
-        largest_army = True
-        for player in range(_number_of_players):
-            if player != local_player:
-                player_uc = get_player_hand(repo, "unveiled_cards", player)
-                if knights < player_uc[0]:
-                    largest_army = False
-    return largest_army
+    for player in range(_number_of_players):
+        player_uc = get_player_hand(repo, "unveiled_cards", player)
+        largest_army[player] = player_uc[0]
+
+    for player in range(_number_of_players):
+        if largest_army[player] == max(largest_army) and largest_army[player] > 2:
+            return player
+    return -1
 
 
-def has_longest_road(repo: git.Repo, local_player: int, hexagons: [HexagonTile]) -> bool:
+def get_longest_path(path_sum: int, road_start: Road_point, neighbours: [[Road_point]], visited: [Road_point], start_paths: [Road_point]):
+    viable_neighbours = []
+    max_path = 0
+    if road_start not in visited:
+        visited.append(road_start)
+
+    for new_neighbour in neighbours[road_start.index]:
+        # visit all adjacent roads
+        if new_neighbour not in visited and new_neighbour not in start_paths:
+            viable_neighbours.append(new_neighbour)
+
+    if len(viable_neighbours) == 0:
+        return path_sum + 1
+    else:
+        for neighbour in viable_neighbours:
+            temp_sum = get_longest_path(path_sum, neighbour, neighbours, visited, viable_neighbours)
+            if temp_sum >= max_path:
+                max_path = temp_sum
+    return path_sum + max_path + 1
+
+
+def get_longest_road(repo: git.Repo, local_player: int, hexagons: [HexagonTile]) -> int:
     """
     Checks if the given player has the longest road. The longest road needs to be at least 5
     continuous pieces of road.
@@ -1629,38 +1650,63 @@ def has_longest_road(repo: git.Repo, local_player: int, hexagons: [HexagonTile])
                     if is_adjacent_road_to_road(sps, road, neighbour):
                         neighbours[road.index].append(neighbour)
         visited = []
-        # choose random road to start
         path_sum = [0, 0, 0, 0]
-        i = 0
-        todo = []
+        index = 0
+
         while len(visited) != len(roads):
-            road = roads[i]
-            if road in visited:
+            # choose first roads to start (e.g. in case of split road networks)
+            i = 0
+            road = roads[0]
+            while road in visited:
+                road = roads[i]
                 i += 1
-                continue
-            paths = []
-            index = 0
-            for neigbour in neighbours[road.index]:
-                paths.append(neigbour)
-                todo.append(neigbour)
-            while todo:
-                path_sum[index] += 1
-                road = todo.pop()
-                if road in paths:
-                    index += 1
-                if road not in visited:
-                    visited.append(road)
-                    for neighbour in neighbours[road.index]:
-                        if neigbour not in visited:
-                            todo.append(neighbour)
+            visited.append(road)
 
-        longest_road[player] = max(path_sum)
+            start_paths = []
+            for neighbour in neighbours[road.index]:
+                # mark all initial neighbours as starter paths
+                start_paths.append(neighbour)
+            for neighbour in start_paths:
+                # for all neighbours of the first road
+                path_sum[index] = get_longest_path(0, neighbour, neighbours, visited, start_paths)
+                index += 1
 
-    print(longest_road)
-    if longest_road[local_player] == max(longest_road) and longest_road[local_player] >= 5:
-        return True
-    else:
-        return False
+            if len(start_paths) == 0:
+                return False
+            elif len(start_paths) == 1:
+                path_sum.sort(reverse=True)
+                longest_road[player] = path_sum[0] + 1
+            elif len(start_paths) == 2:
+                path_sum.sort(reverse=True)
+                # the starting road is not a middle piece between the paths
+                if is_adjacent_road_to_road(sps, start_paths[0], start_paths[1]):
+                    longest_road[player] = path_sum[0] + path_sum[1]
+                else:
+                    # the starting road is a middle piece
+                    longest_road[player] = path_sum[0] + 1 + path_sum[1]
+            elif len(start_paths) == 3:
+                fst_val = 0
+                fst_ind = 0
+                snd_val = 0
+                snd_ind = 0
+                for val, i in enumerate(path_sum):
+                    if val > fst_val:
+                        fst_val = val
+                        fst_ind = i
+                    elif fst_val > 0 and val > snd_val:
+                        snd_val = val
+                        snd_ind = i
+
+                # the starting road is not a middle piece between the paths
+                if is_adjacent_road_to_road(sps, start_paths[fst_ind], start_paths[snd_ind]):
+                    longest_road[player] = path_sum[fst_ind] + path_sum[snd_ind]
+                else:
+                    # the starting road is a middle piece
+                    longest_road[player] = path_sum[fst_ind] + 1 + path_sum[snd_ind]
+    for player in range(_number_of_players):
+        if longest_road[player] == max(longest_road) and longest_road[player] >= 5:
+            return player
+    return -1
 
 
 def count_points(repo: git.Repo, hexagons: [HexagonTile], local_player: int, longest_road: int,
@@ -1681,25 +1727,33 @@ def count_points(repo: git.Repo, hexagons: [HexagonTile], local_player: int, lon
     victory points
     """
     points = 0
+    knights = 0
+    roads = 0
+    villages = 0
+    cities = 0
+    vp = 0
 
     uc = get_player_hand(repo, "unveiled_cards", local_player)
-    points += uc[1]
+    vp += uc[1]
 
     sps = get_all_settlement_points(repo, hexagons)
     settlements = get_all_settlements_of_player(sps, local_player)
 
     for settlement in settlements:
         if settlement.type == "Village":
-            points += 1
+            villages += 1
         elif settlement.type == "City":
-            points += 2
+            cities += 2
 
     if local_player == longest_road:
-        points += 2
+        roads += 2
 
     if local_player == mightiest_army:
-        points += 2
+        knights += 2
 
+    points = vp + knights + roads + villages + cities
+    if points >= 8:
+        print(f"{get_player_colour(_number_of_players)[local_player]}_{points}: villages: {villages} | cities: {cities} | vp: {vp} | longest road: {roads} | mightiest army: {knights} ")
     return points
 
 

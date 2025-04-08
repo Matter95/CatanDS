@@ -263,6 +263,7 @@ def buy_dev_card(repo: git.Repo, local_player: int):
         if index == 4:
             update = update and update_player_hand(repo, "unveiled_cards", local_player, [0, 1])
             update = update and update_bank_development_cards(repo, [0, 0, 0, 0, -1])
+            files.append(os.path.join(repo.working_dir, "state", "game", "bank", "development_cards"))
             files.append(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{local_player + 1}",
                                       "unveiled_cards"))
         else:

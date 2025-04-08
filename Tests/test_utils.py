@@ -10,7 +10,7 @@ from initializing import initialize_game_state
 from utils import (
     get_initial_phase,
     update_road_point,
-    create_git_dir_test, has_longest_road
+    create_git_dir_test, get_longest_road
 )
 
 
@@ -68,7 +68,7 @@ class TestInputOutput(TestCase):
                 update_road_point(self.repo, rp.index, "Red")
                 changed.append(rp)
 
-        hlr = has_longest_road(self.repo, 0, self.hexagons)
+        hlr = get_longest_road(self.repo, 0, self.hexagons)
 
         self.assertEqual(hlr, True)
 
@@ -93,7 +93,7 @@ class TestInputOutput(TestCase):
                 update_road_point(self.repo, rp.index, "Red")
                 changed.append(rp)
 
-        hlr = has_longest_road(self.repo, 0, self.hexagons)
+        hlr = get_longest_road(self.repo, 0, self.hexagons)
 
         self.assertEqual(hlr, False)
 
@@ -122,7 +122,7 @@ class TestInputOutput(TestCase):
                     update_road_point(self.repo, rp.index, "Red")
                     changed.append(rp)
 
-            hlr = has_longest_road(self.repo, 0, self.hexagons)
+            hlr = get_longest_road(self.repo, 0, self.hexagons)
 
             self.assertEqual(hlr, True)
 
@@ -139,7 +139,7 @@ class TestInputOutput(TestCase):
                 (30,23),
                 (44,38),
                 (45,38),
-                (46,39),
+                (45,39),
             ]
             changed = []
 
@@ -150,7 +150,7 @@ class TestInputOutput(TestCase):
                     update_road_point(self.repo, rp.index, "Red")
                     changed.append(rp)
 
-            hlr = has_longest_road(self.repo, 0, self.hexagons)
+            hlr = get_longest_road(self.repo, 0, self.hexagons)
 
             self.assertEqual(hlr, True)
 

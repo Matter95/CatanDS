@@ -49,7 +49,7 @@ _resource_card_pool_str: str = "19,19,19,19,19"
 _development_card_pool: Tuple[int, ...] = (2, 2, 2, 14, 5)
 _dev_card_iid: Tuple[int, ...] = (0,0,1,1,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,4,4,4)
 _development_card_pool_str: str = "2,2,2,14,5"
-_number_of_players = 2
+_number_of_players = 3
 
 _cost_village = (1,1,1,1,0)
 _cost_city = (0,0,0,2,3)
