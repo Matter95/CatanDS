@@ -44,7 +44,9 @@ from utils import (
     get_discard_pile,
     get_all_settlements_of_player,
     get_all_roads_of_player,
-    get_player_buildings, get_longest_road, get_mightiest_army,
+    get_player_buildings,
+    get_longest_road,
+    get_mightiest_army,
 )
 
 
@@ -433,5 +435,4 @@ def take_statistics(number_of_sims: int):
     for i in range(number_of_sims):
         get_stats(f"Catan_{i}")
 
-
-simulate(1)
+sim(0, True)
