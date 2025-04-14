@@ -435,4 +435,4 @@ def take_statistics(number_of_sims: int):
     for i in range(number_of_sims):
         get_stats(f"Catan_{i}")
 
-sim(0, True)
+sim(0,True)
