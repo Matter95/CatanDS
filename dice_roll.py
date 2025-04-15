@@ -237,7 +237,9 @@ def roll_dice(repo: git.Repo, hexagons: [HexagonTile]):
                 repo.index.add(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{local_player + 1}", "bought_cards"))
                 repo.index.add(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{local_player + 1}", "available_cards"))
 
-            result = randrange(2, 12)
+            die1 = randrange(1, 7)
+            die2 = randrange(1, 7)
+            result = die1 + die2
 
             if update:
                 # send dice result to all other players
