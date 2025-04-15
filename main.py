@@ -410,10 +410,60 @@ def get_stats(repo_folder):
     total_bytes = 0
     nr_commits = 0
     nr_rounds = 0
+    # build road, build village, build city, buy dev_card, trade, roll_dice
+    actions = [0,0,0,0,0,0]
+    # rolls
+    dice = [0,0,0,0,0,0,0,0,0,0,0,0,0]
+    # dev_cards
+    play_cards = [0,0,0,0]
     # Iterate through all commits
     for commit in repo.iter_commits():
         if commit.message.__contains__("finish_building"):
             nr_rounds += 1
+        elif commit.message.__contains__("build_road"):
+            actions[0] += 1
+        elif commit.message.__contains__("build_village"):
+            actions[1] += 1
+        elif commit.message.__contains__("build_city"):
+            actions[2] += 1
+        elif commit.message.__contains__("buy_dev_card"):
+            actions[3] += 1
+        elif commit.message.__contains__("trade_"):
+            actions[4] += 1
+        elif commit.message.__contains__("result_"):
+            actions[5] += 1
+            if commit.message.__contains__("result_2"):
+                dice[2] += 1
+            elif commit.message.__contains__("result_3"):
+                dice[3] += 1
+            elif commit.message.__contains__("result_4"):
+                dice[4] += 1
+            elif commit.message.__contains__("result_5"):
+                dice[5] += 1
+            elif commit.message.__contains__("result_6"):
+                dice[6] += 1
+            elif commit.message.__contains__("result_7"):
+                dice[7] += 1
+            elif commit.message.__contains__("result_8"):
+                dice[8] += 1
+            elif commit.message.__contains__("result_9"):
+                dice[9] += 1
+            elif commit.message.__contains__("result_10"):
+                dice[10] += 1
+            elif commit.message.__contains__("result_11"):
+                dice[11] += 1
+            elif commit.message.__contains__("result_12"):
+                dice[12] += 1
+        elif commit.message.__contains__("play_card_"):
+            actions[0] += 1
+            if commit.message.__contains__("Monopoly"):
+                play_cards[0] += 1
+            elif commit.message.__contains__("Year-of-Plenty"):
+                play_cards[1] += 1
+            elif commit.message.__contains__("Road-Building"):
+                play_cards[2] += 1
+            elif commit.message.__contains__("Knight"):
+                play_cards[3] += 1
         nr_commits += 1
         if commit.parents:  # Ensure commit has a parent
             diff = commit.diff(commit.parents[0], create_patch=True)
@@ -422,10 +472,25 @@ def get_stats(repo_folder):
                     total_bytes += len(change.diff)
     if not os.path.isfile(os.path.join(ROOT_DIR, "stats")):
         with open(os.path.join(ROOT_DIR, "stats"), "x") as f:
-            pass
+            f.write(f"total bytes; number of commits; number of rounds\n")
+    if not os.path.isfile(os.path.join(ROOT_DIR, "stats_dice")):
+        with open(os.path.join(ROOT_DIR, "stats_dice"), "x") as f:
+            f.write(f"2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12\n")
+    if not os.path.isfile(os.path.join(ROOT_DIR, "stats_cards")):
+        with open(os.path.join(ROOT_DIR, "stats_cards"), "x") as f:
+            f.write(f"Monopoly; Year-of-Plenty; Road-Building; Knight\n")
+    if not os.path.isfile(os.path.join(ROOT_DIR, "stats_actions")):
+        with open(os.path.join(ROOT_DIR, "stats_actions"), "x") as f:
+            f.write(f"build road; build village; build city; buy dev_card; trade; roll_dice\n")
+
     with open(os.path.join(ROOT_DIR, "stats"), "a") as f:
         f.write(f"{total_bytes / 1000};{nr_commits};{ceil(nr_rounds / _number_of_players)}\n")
-
+    with open(os.path.join(ROOT_DIR, "stats_dice"), "a") as f:
+        f.write(f"{dice[2]};{dice[3]};{dice[4]};{dice[5]};{dice[6]};{dice[7]};{dice[8]};{dice[9]};{dice[10]};{dice[11]};{dice[12]}\n")
+    with open(os.path.join(ROOT_DIR, "stats_cards"), "a") as f:
+        f.write(f"{play_cards[0]};{play_cards[1]};{play_cards[2]};{play_cards[3]}\n")
+    with open(os.path.join(ROOT_DIR, "stats_actions"), "a") as f:
+        f.write(f"{actions[0]};{actions[1]};{actions[2]};{actions[3]};{actions[4]};{actions[5]}\n")
 
 def simulate(number_of_sims: int):
     for i in range(number_of_sims):
@@ -435,4 +500,4 @@ def take_statistics(number_of_sims: int):
     for i in range(number_of_sims):
         get_stats(f"Catan_{i}")
 
-sim(0,True)
+take_statistics(200)
