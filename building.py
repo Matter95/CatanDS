@@ -448,11 +448,12 @@ def play_card(repo: git.Repo, playable_cards, local_player: int, viable_rp: [Roa
 
             diff = [0, 0, 0, 0, 0]
 
-            while stolen == False:
-                steal_i = randrange(len(hand))
-                if hand[steal_i] > 0:
-                    diff[steal_i] += 1
-                    break
+            if hand != diff:
+                while stolen == False:
+                    steal_i = randrange(len(hand))
+                    if hand[steal_i] > 0:
+                        diff[steal_i] += 1
+                        break
             update = update and update_player_hand(repo, "resource_cards", local_player, diff)
             update = update and update_player_hand(repo, "resource_cards", steal_from, negate_int_arr(diff))
             files.append(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{local_player + 1}"))
