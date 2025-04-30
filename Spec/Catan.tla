@@ -28,6 +28,7 @@ Players == CHOOSE
 P == chooseSeq(Players)                               
 \* Resource Card Types
 RCT == {Lumber, Brick, Wool, Grain, Ore}
+RCTMAP == [Lumber: "Lumber", Brick: "Brick", Wool: "Wool", Grain: "Grain", Ore: "Ore"]
 RCTST == <<"Lumber", "Brick", "Wool", "Grain", "Ore">>               
 \* Progress Card Types
 PCT == {Monopoly, YearOfPlenty, RoadBuilding}
@@ -258,6 +259,13 @@ SumFuncIndex(func, ind) ==
              IN f[d[i]] + helper(f, D\{d}, i)
    IN helper(func, DOMAIN func, ind)
 
+CountSet(func) == 
+  LET RECURSIVE helper(_,_)
+    helper(f,D) ==
+      IF D = {} THEN 0 
+        ELSE LET d == CHOOSE e \in D: TRUE
+             IN f[d] + helper(f, D\{d})
+   IN helper(func, DOMAIN func)
 
 IterateRec(rec) == [d \in DOMAIN rec |-> (rec)[d]]
 
@@ -283,11 +291,11 @@ PH == [
            ]
       ]
 \* Hands      
-H   == [p \in Players |-> PH] 
+H   == [Players -> PH] 
 \* Player Buildings
 PB == [Road: 0..15, Village: 0..5, City: 0..4] 
 \* Buildings
-B   == [p \in Players |-> PB] 
+B   == [Players -> PB] 
 \* Settlement Points
 S   == [
          coords: {{k[1], k[2], k[3]}: k \in {t \in M \X M \X M: allAdjacent(t[1],t[2],t[3]) /\ 
@@ -310,14 +318,16 @@ TypeOK ==
   /\ G.bnk \in BNK                    
 \*  /\ Print("DP", G.dp \in DP)
   /\ G.dp \in DP
-\*  /\ Print("AC", \A p \in Players: G.h[p].DC.AC \in ACT)
-\*  /\ Print("BC", \A p \in Players: G.h[p].DC.BC \in BCT)
-\*  /\ Print("UC", \A p \in Players: G.h[p].DC.UC \in UCT)
-  /\ \A p \in Players: G.h[p] \in PH
+\*  /\ Print("H", G.h \in H)
+  /\ G.h \in H
 \*  /\ Print("B", \A p \in Players: G.b[p] \in PB)
-  /\ \A p \in Players: G.b[p] \in PB
+  /\ G.b \in B
 \*  /\ Print("S", G.s \subseteq S)
   /\ G.s \subseteq S
+  \*
+  \* TODO each settlement point should only have one instance in G.s and non adjacent ones should have none
+\*  /\ {k[1], k[2], k[3]}: k \in {t \in M \X M \X M: allAdjacent(t[1],t[2],t[3]) /\ 
+\*         (t[1].res # bot \/ t[2].res # bot \/ t[3].res # bot)}
 \*  /\ Print("R", G.r \subseteq R)
   /\ G.r \subseteq R
 \*  /\ Print("BA", G.ba \in M)
@@ -394,10 +404,16 @@ InitPhaseTwo ==
     /\ \E rp \in G.r: rp.own = bot /\ isAdjacentRoadToSettlement(sp,rp) /\ roadHasNoBandit(rp)
     /\ LET gain == <<0,0,0,0,0>>
     IN
-      /\ \A c \in {c \in M \X RCT: c[1] \in sp.coords /\ tileHasNoBandit(c[1]) /\ c[1].res = c[2]}: gain[getIndex(c, RCT)] = gain[getIndex(c, RCT)] + 1
-      /\ Print(gain, TRUE)
+      /\ \A c \in {c \in M \X RCT: c[1] \in sp.coords /\ c[1].res = c[2]}: gain[getIndex(c[2], RCT)] = gain[getIndex(c[2], RCT)] + 1
+      /\ Print(sp.coords, TRUE)
+      /\ Print({c \in M \X RCT: c[1] \in sp.coords /\ tileHasNoBandit(c[1]) /\ c[1].res = c[2]}, TRUE)
       /\ I' = [I EXCEPT !.ap = reverse(P)[(getIndex(I.ap, reverse(P)) + 1) % (Cardinality(Players) + 1)]] \* next player
-      /\ G' = [G EXCEPT !.bnk.RC.Lumber = @ - gain[1],
+      /\ G' = [G EXCEPT !.bnk.RC = [Lumber |-> @.Lumber - gain[1], 
+                                    Brick |-> @.Brick - gain[2], 
+                                    Wool |-> @.Wool - gain[3],
+                                    Grain |-> @.Grain - gain[4],
+                                    Ore |-> @.Ore - gain[5]],
+                        !.bnk.RC.Lumber = @ - gain[1],
                         !.bnk.RC.Brick  = @ - gain[2],
                         !.bnk.RC.Wool   = @ - gain[3],
                         !.bnk.RC.Grain  = @ - gain[4],
@@ -485,7 +501,7 @@ ResourceLossPlayer(p) ==
 
 DiceRollPhase ==
   /\  G.tp = DiceRoll
-  /\  LET d     == CHOOSE n \in 2..12: TRUE
+  /\  LET d     == CHOOSE n \in 2..12: TRUE \* change this to \E d \in 2..12
           loss  == [p \in Players |-> ResourceLossPlayer(p)]
           gain  == [p \in Players |-> ResourceGainPlayer(p,d)]
       IN
@@ -575,6 +591,11 @@ Next ==
   \/ DiceRollPhase
 
 Spec == Init /\ [][Next]_<<G, I>>
+
+\*\A rct \in DOMAIN RC: G.h[p1].RC[rct]
+
+\* make Settlement Points and Road Points a mapping from coordinates -> [own, st] / [own]
+\* InitPhase2: Cardinality of adjacent tiles with a resource type rct
 
 =============================================================================
 \* Modification Histor
