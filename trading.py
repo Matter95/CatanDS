@@ -129,7 +129,7 @@ def trading(repo: git.Repo, hexagons: [HexagonTile]):
                     author_name = repo.active_branch.name
                     author = git.Actor(author_name, f"{author_name}@git.com")
                     repo.index.commit(
-                        f"trade_player{local_player + 1}",
+                        f"trade_player_{local_player + 1}_{trade_cost}_to_1",
                         [repo.head.commit],
                         True,
                         author,

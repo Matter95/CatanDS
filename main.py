@@ -1,4 +1,5 @@
 import os
+import time
 from math import ceil
 
 import git
@@ -75,6 +76,7 @@ def sim(repo_folder_nr=-1, with_ui=False):
     longest_road = -1
     mightiest_army = -1
     # check if there is already a game around
+    t1 = time.time()
     try:
         repo = Repo(os.path.join(ROOT_DIR, f"Catan_{repo_folder_nr}"))
         init_state = get_initial_phase(repo)
@@ -107,6 +109,8 @@ def sim(repo_folder_nr=-1, with_ui=False):
                 )
 
             player_nr += 1
+    t2 = time.time()
+    write_times(t2 - t1, repo_folder_nr, "git_computation_time")
 
     terminated = False
     while not terminated:
@@ -122,7 +126,8 @@ def sim(repo_folder_nr=-1, with_ui=False):
             local_player = get_player_index(repo.active_branch.name)
             merge_repos(repo, repo_folder_nr)
             if check_invariants(repo, hexagons):
-                longest_road, mightiest_army, finished = do_turn(repo, local_player, hexagons, repo_folder_nr, longest_road, mightiest_army)
+                longest_road, mightiest_army, finished = do_turn(repo, local_player, hexagons, repo_folder_nr,
+                                                                 longest_road, mightiest_army)
             else:
                 print(f"Illegal state {local_player}")
                 terminated = True
@@ -137,9 +142,18 @@ def sim(repo_folder_nr=-1, with_ui=False):
             pygame.display.flip()
         else:
             local_player = get_player_index(repo.active_branch.name)
+            t1 = time.time()
             merge_repos(repo, repo_folder_nr)
+            t2 = time.time()
+            write_times(t2-t1, repo_folder_nr, "git_computation_time")
+
+            t1 = time.time()
             if check_invariants(repo, hexagons):
-                longest_road, mightiest_army, finished = do_turn(repo, local_player, hexagons, repo_folder_nr, longest_road, mightiest_army)
+                t2 = time.time()
+                write_times(t2 - t1, repo_folder_nr, "invariant_computation_time")
+
+                longest_road, mightiest_army, finished = do_turn(repo, local_player, hexagons, repo_folder_nr,
+                                                                 longest_road, mightiest_army)
                 if finished:
                     terminated = True
             else:
@@ -165,7 +179,8 @@ def switch_player(repo: git.Repo, local_player: int, repo_folder_nr: int):
     repo.git.checkout(f"{get_player_colour(_number_of_players)[next_player]}_{repo_folder_nr}")
 
 
-def do_turn(repo: git.Repo, local_player: int, hexagons: [HexagonTile], repo_folder_nr: int, longest_road: int, mightiest_army: int):
+def do_turn(repo: git.Repo, local_player: int, hexagons: [HexagonTile], repo_folder_nr: int, longest_road: int,
+            mightiest_army: int):
     """
     Logic that forces a player to take the action of the given turn phase and only allows the active player
     to change the state of the game.
@@ -410,16 +425,17 @@ def get_stats(repo_folder):
     total_bytes = 0
     nr_commits = 0
     nr_rounds = 0
-    # build road, build village, build city, buy dev_card, trade, roll_dice
-    actions = [0,0,0,0,0,0]
+    # build road, build village, build city, buy dev_card, finish_building, trade(4:1), trade(3:1), trade(2:1), finish_trade, roll_dice
+    actions = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     # rolls
-    dice = [0,0,0,0,0,0,0,0,0,0,0,0,0]
+    dice = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     # dev_cards
-    play_cards = [0,0,0,0]
+    play_cards = [0, 0, 0, 0]
     # Iterate through all commits
     for commit in repo.iter_commits():
         if commit.message.__contains__("finish_building"):
             nr_rounds += 1
+            actions[4] += 1
         elif commit.message.__contains__("build_road"):
             actions[0] += 1
         elif commit.message.__contains__("build_village"):
@@ -428,10 +444,17 @@ def get_stats(repo_folder):
             actions[2] += 1
         elif commit.message.__contains__("buy_dev_card"):
             actions[3] += 1
+        elif commit.message.__contains__("finish_trading"):
+            actions[8] += 1
         elif commit.message.__contains__("trade_"):
-            actions[4] += 1
+            if commit.message.__contains__("2_1"):
+                actions[7] += 1
+            elif commit.message.__contains__("3_1"):
+                actions[6] += 1
+            elif commit.message.__contains__("4_1"):
+                actions[5] += 1
         elif commit.message.__contains__("result_"):
-            actions[5] += 1
+            actions[9] += 1
             if commit.message.__contains__("result_2"):
                 dice[2] += 1
             elif commit.message.__contains__("result_3"):
@@ -470,6 +493,12 @@ def get_stats(repo_folder):
             for change in diff:
                 if change.diff:
                     total_bytes += len(change.diff)
+                    if not os.path.isfile(os.path.join(ROOT_DIR, "commit_sizes")):
+                        with open(os.path.join(ROOT_DIR, "commit_sizes"), "x") as f:
+                            f.write(f"commit sizes in bytes\n")
+                    else:
+                        with open(os.path.join(ROOT_DIR, "commit_sizes"), "a") as f:
+                            f.write(f"{len(change.diff)}\n")
     if not os.path.isfile(os.path.join(ROOT_DIR, "stats")):
         with open(os.path.join(ROOT_DIR, "stats"), "x") as f:
             f.write(f"total bytes; number of commits; number of rounds\n")
@@ -481,23 +510,43 @@ def get_stats(repo_folder):
             f.write(f"Monopoly; Year-of-Plenty; Road-Building; Knight\n")
     if not os.path.isfile(os.path.join(ROOT_DIR, "stats_actions")):
         with open(os.path.join(ROOT_DIR, "stats_actions"), "x") as f:
-            f.write(f"build road; build village; build city; buy dev_card; trade; roll_dice\n")
+            f.write(f"build road; build village; build city; buy dev_card; finish_building; trade(4:1); trade(3:1); trade(2:1); finish_trade; roll_dice\n")
 
     with open(os.path.join(ROOT_DIR, "stats"), "a") as f:
         f.write(f"{total_bytes / 1000};{nr_commits};{ceil(nr_rounds / _number_of_players)}\n")
     with open(os.path.join(ROOT_DIR, "stats_dice"), "a") as f:
-        f.write(f"{dice[2]};{dice[3]};{dice[4]};{dice[5]};{dice[6]};{dice[7]};{dice[8]};{dice[9]};{dice[10]};{dice[11]};{dice[12]}\n")
+        f.write(
+            f"{dice[2]};{dice[3]};{dice[4]};{dice[5]};{dice[6]};{dice[7]};{dice[8]};{dice[9]};{dice[10]};{dice[11]};{dice[12]}\n")
     with open(os.path.join(ROOT_DIR, "stats_cards"), "a") as f:
         f.write(f"{play_cards[0]};{play_cards[1]};{play_cards[2]};{play_cards[3]}\n")
     with open(os.path.join(ROOT_DIR, "stats_actions"), "a") as f:
-        f.write(f"{actions[0]};{actions[1]};{actions[2]};{actions[3]};{actions[4]};{actions[5]}\n")
+        f.write(f"{actions[0]};{actions[1]};{actions[2]};{actions[3]};{actions[4]};{actions[5]};{actions[6]};{actions[7]};{actions[8]};{actions[9]};{actions[10]}\n")
+
 
 def simulate(number_of_sims: int):
     for i in range(number_of_sims):
+        t1 = time.time()
         sim(i, False)
+        t2 = time.time()
+        elapsed_time = t2 - t1
+        if not os.path.isfile(os.path.join(ROOT_DIR, "computation_time")):
+            with open(os.path.join(ROOT_DIR, "computation_time"), "x") as f:
+                f.write(f"elapsed time per run [sec]\n")
+        else:
+            with open(os.path.join(ROOT_DIR, "computation_time"), "a") as f:
+                f.write(f"{elapsed_time}\n")
 
 def take_statistics(number_of_sims: int):
     for i in range(number_of_sims):
         get_stats(f"Catan_{i}")
 
-take_statistics(200)
+def write_times(elapsed_time, repo_nr: int, file: str):
+    if not os.path.isfile(os.path.join(ROOT_DIR, f"Catan_{repo_nr}", file)):
+        with open(os.path.join(ROOT_DIR, f"Catan_{repo_nr}", file), "x") as f:
+            f.write(f"elapsed time per run [sec]\n")
+    else:
+        with open(os.path.join(ROOT_DIR, f"Catan_{repo_nr}", file), "a") as f:
+            f.write(f"{elapsed_time}\n")
+
+take_statistics(50)
+#simulate(50)
