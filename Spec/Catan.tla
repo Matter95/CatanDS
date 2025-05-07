@@ -844,6 +844,34 @@ Next ==
 
 Spec == Init /\ [][Next]_<<G, I>>
 
+WeakFairness ==
+    /\ WF_<<G, I>>(InitPhaseOne)
+    /\ WF_<<G, I>>(InitPhaseTwo)
+    /\ WF_<<G, I>>(DiceRollPhase)
+    /\ WF_<<G, I>>(EmptyTrade)
+    /\ WF_<<G, I>>(TradeFourToOne)
+    /\ WF_<<G, I>>(TradeThreeToOne)
+    /\ WF_<<G, I>>(TradeTwoToOne)
+    /\ WF_<<G, I>>(EmptyBuild)
+    /\ WF_<<G, I>>(BuildRoad)
+    /\ WF_<<G, I>>(BuildVillage)
+    /\ WF_<<G, I>>(BuildCity)
+    /\ WF_<<G, I>>(BuyDevCard)
+    /\ WF_<<G, I>>(PlayDevCard)
+    
+FairSpec ==
+    /\ Spec
+    /\ WeakFairness
+
+GameEnded == G.tp = top
+EventuallyAlwaysGameEnded == <>[]GameEnded
+
+THEOREM Liveness == FairSpec => EventuallyAlwaysGameEnded
+THEOREM Safety == Spec => /\ TypeOK
+                          /\ ConservationOfResourceCards
+                          /\ ConservationOfDevelopmentCards
+                          /\ ConservationOfBuildings
+                          
 =============================================================================
 \* Modification Histor
 \* Last modified Wed Apr 23 17:46:25 CEST 2025 by tim_m
