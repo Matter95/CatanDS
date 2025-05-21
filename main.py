@@ -603,5 +603,10 @@ def compute_sync_time(path, number_of_sims: int):
 #take_statistics(path, 100)
 #compute_sync_time(path, 100)
 
-repo_path = ROOT_DIR
-git.Repo
+
+repo = Repo(ROOT_DIR)
+repo.git.reset("--hard", "HEAD~5")
+t1 = time.time()
+repo.remotes.origin.pull()
+t2 = time.time()
+elapsed_time = t2 - t1
