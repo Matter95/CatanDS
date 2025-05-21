@@ -604,9 +604,10 @@ def compute_sync_time(path, number_of_sims: int):
 #compute_sync_time(path, 100)
 
 
-repo = Repo(ROOT_DIR)
-repo.git.reset("--hard", "HEAD~5")
-t1 = time.time()
-repo.remotes.origin.pull()
-t2 = time.time()
-elapsed_time = t2 - t1
+for _ in range(0, 100):
+    repo = Repo(ROOT_DIR)
+    repo.git.reset("--hard", "HEAD~5")
+    t1 = time.time()
+    repo.remotes.origin.pull()
+    t2 = time.time()
+    elapsed_time = t2 - t1
