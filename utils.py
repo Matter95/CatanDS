@@ -464,7 +464,7 @@ def update_player_buildings(repo: git.Repo, player_nr: int, update_diff: [int]) 
         new_val = []
         for i, val in enumerate(update_diff):
             if 0 > old_val[i] + val or old_val[i] + val > _player_building_pool[i]:
-                print(f"PLAYER BUILDING: illegal update: not enough cards. Available {old_val[i]}, decrease {val}")
+                print(f"PLAYER BUILDING: illegal update: not enough pieces type {i}. Available {old_val[i]}, decrease {val}")
                 return False
             new_val.append(old_val[i] + val)
         with open(path, "w") as file:
@@ -1752,7 +1752,7 @@ def count_points(repo: git.Repo, hexagons: [HexagonTile], local_player: int, lon
         knights += 2
 
     points = vp + knights + roads + villages + cities
-    if points >= 8:
+    if points == 10:
         print(f"{get_player_colour(_number_of_players)[local_player]}_{points}: villages: {villages} | cities: {cities} | vp: {vp} | longest road: {roads} | mightiest army: {knights} ")
     return points
 

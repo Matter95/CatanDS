@@ -158,6 +158,7 @@ def roll_dice(repo: git.Repo, hexagons: [HexagonTile]):
                     else:
                         print("update failed in dice roll merge")
                         repo.git.reset("--hard", "HEAD")
+
         else:
             index = parent.message.find("result_")
             roll = int(parent.message[index + len("result_"):])

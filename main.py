@@ -447,11 +447,11 @@ def get_stats(repo_folder):
         elif commit.message.__contains__("finish_trading"):
             actions[8] += 1
         elif commit.message.__contains__("trade_"):
-            if commit.message.__contains__("2_1"):
+            if commit.message.__contains__("2_to_1"):
                 actions[7] += 1
-            elif commit.message.__contains__("3_1"):
+            elif commit.message.__contains__("3_to_1"):
                 actions[6] += 1
-            elif commit.message.__contains__("4_1"):
+            elif commit.message.__contains__("4_to_1"):
                 actions[5] += 1
         elif commit.message.__contains__("result_"):
             actions[9] += 1
@@ -535,10 +535,11 @@ def simulate(number_of_sims: int):
         else:
             with open(os.path.join(ROOT_DIR, "computation_time"), "a") as f:
                 f.write(f"{elapsed_time}\n")
-
-def take_statistics(number_of_sims: int):
-    for i in range(number_of_sims):
         get_stats(f"Catan_{i}")
+
+def take_statistics(path, number_of_sims: int):
+    for i in range(number_of_sims):
+        get_stats(os.path.join(path, f"Catan_{i}"))
 
 def write_times(elapsed_time, repo_nr: int, file: str):
     if not os.path.isfile(os.path.join(ROOT_DIR, f"Catan_{repo_nr}", file)):
@@ -548,5 +549,59 @@ def write_times(elapsed_time, repo_nr: int, file: str):
         with open(os.path.join(ROOT_DIR, f"Catan_{repo_nr}", file), "a") as f:
             f.write(f"{elapsed_time}\n")
 
-take_statistics(50)
-#simulate(50)
+
+
+def get_size(start_path = '.'):
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(start_path):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            # skip if it is symbolic link
+            if not os.path.islink(fp):
+                total_size += os.path.getsize(fp)
+
+    return total_size
+
+def compute_git_repo_size(path, number_of_sims: int):
+    for i in range(0, number_of_sims):
+        repo_path = (os.path.join(path, f"Catan_{i}", ".git"))
+        size_bytes = get_size(repo_path)
+
+        if not os.path.isfile(os.path.join(ROOT_DIR, "repo_sizes")):
+            with open(os.path.join(ROOT_DIR, "repo_sizes"), "x") as f:
+                f.write(f"run number; [KB]; [MB] \n")
+        else:
+            with open(os.path.join(ROOT_DIR, f"repo_sizes"), "a") as f:
+                f.write(f"{i};{size_bytes / 1024}; {size_bytes / 1024 / 1024}\n")
+
+def compute_sync_time(path, number_of_sims: int):
+    for i in range(0, number_of_sims):
+        repo_path = (os.path.join(path, f"Catan_{i}"))
+        time = 0
+        with open(os.path.join(repo_path, "git_computation_time"), "r") as f:
+            for line in f.readlines():
+                if line.__contains__("elapsed"):
+                    continue
+                else:
+                    time += float(line)
+
+        if not os.path.isfile(os.path.join(ROOT_DIR, "sync_time")):
+            with open(os.path.join(ROOT_DIR, "sync_time"), "x") as f:
+                f.write(f"run nr; elapsed time \n")
+        else:
+            with open(os.path.join(ROOT_DIR, f"sync_time"), "a") as f:
+                f.write(f"{i};{time}\n")
+
+
+#
+#simulate(100)
+#sim(55, True)
+#path = os.path.join("E:", "Unibasel", "Master Thesis", "2_player_games")
+#path = os.path.join("E:", "Unibasel", "Master Thesis", "4_player_games")
+#path = os.path.join(ROOT_DIR)
+#compute_git_repo_size(path, 100)
+#take_statistics(path, 100)
+#compute_sync_time(path, 100)
+
+repo_path = ROOT_DIR
+git.Repo

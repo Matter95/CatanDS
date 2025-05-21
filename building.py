@@ -1,4 +1,5 @@
 import os
+from importlib import resources
 from random import randrange
 
 import git
@@ -419,16 +420,21 @@ def play_card(repo: git.Repo, playable_cards, local_player: int, viable_rp: [Roa
         name = "Road-Building"
         files.append(os.path.join(repo.working_dir, "state", "game", "road_points"))
         files.append(os.path.join(repo.working_dir, "state", "game", "player_buildings", f"player_{local_player + 1}"))
+        available_roads = get_player_buildings_type(repo, "Road", local_player)
+        if available_roads  >= 2 and len(viable_rp) > 0:
+            # choose first road
+            rp = viable_rp[randrange(0, len(viable_rp))]
+            update = update and build_road_free(repo, local_player, rp)
+            viable_rp.remove(rp)
 
-        # choose first road
-        rp = viable_rp[randrange(0, len(viable_rp))]
-        update = update and build_road_free(repo, local_player, rp)
-        viable_rp.remove(rp)
-
-        # choose second road
-        rp2 = viable_rp[randrange(0, len(viable_rp))]
-        update = update and build_road_free(repo, local_player, rp2)
-
+            # choose second road
+            rp2 = viable_rp[randrange(0, len(viable_rp))]
+            update = update and build_road_free(repo, local_player, rp2)
+        elif available_roads  == 1 and len(viable_rp) > 0:
+            # choose first road
+            rp = viable_rp[randrange(0, len(viable_rp))]
+            update = update and build_road_free(repo, local_player, rp)
+            viable_rp.remove(rp)
     # "Knight"
     elif type == 3:
         name = "Knight"

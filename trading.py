@@ -2,7 +2,6 @@ import os
 import git
 from random import randrange
 
-
 from gloabl_definitions import HexagonTile, Wharfs
 from utils import (
     update_turn_phase,
@@ -15,9 +14,8 @@ from utils import (
     negate_int_arr,
     can_build_something,
     get_player_buildings_type,
-    get_sum_of_array
+    get_sum_of_array, can_build_type
 )
-
 
 
 def trading(repo: git.Repo, hexagons: [HexagonTile]):
@@ -33,15 +31,25 @@ def trading(repo: git.Repo, hexagons: [HexagonTile]):
     resources = get_player_hand(repo, "resource_cards", local_player)
     # already used up all villages, should build cities
     villages = get_player_buildings_type(repo, "Village", local_player)
-    # if the player cannot build anything, trade randomly
-    if get_sum_of_array(resources) <= 7 and can_build_something(repo, resources, local_player) and villages != 5:
+
+    resource_rich = []
+
+    for i, resource in enumerate(resources):
+        if resource > 5:
+            resource_rich.append(i)
+
+    # if the player does not have too much of a resource and cannot build anything, trade randomly
+    if (len(resource_rich) == 0 and
+            (can_build_type(repo, resources, "Village", local_player) or
+             can_build_type(repo, resources, "City", local_player)) and
+            villages != 5):
         # no need to trade
         finish_trading(repo, local_player)
     else:
         settlements = get_all_settlements_of_player(get_all_settlement_points(repo, hexagons), local_player)
         # check ports available to player
 
-        available_ports = [[],[],[],[],[]]
+        available_ports = [[], [], [], [], []]
 
         for wharf in Wharfs:
             for settlement in settlements:
@@ -80,6 +88,7 @@ def trading(repo: git.Repo, hexagons: [HexagonTile]):
                 resource_can_trade.append(i)
                 can_trade = True
 
+        # do not trade if player can build
         if not can_trade:
             finish_trading(repo, local_player)
         else:
@@ -109,7 +118,7 @@ def trading(repo: git.Repo, hexagons: [HexagonTile]):
                 else:
                     continue
 
-                hand_diff = [0,0,0,0,0]
+                hand_diff = [0, 0, 0, 0, 0]
                 hand_diff[trade_resource] -= trade_cost
                 hand_diff[buy_resource] += 1
 
@@ -139,6 +148,7 @@ def trading(repo: git.Repo, hexagons: [HexagonTile]):
                 else:
                     print("update failed in trade")
                     repo.git.reset("--hard", "HEAD")
+
 
 def finish_trading(repo: git.Repo, local_player: int):
     """
