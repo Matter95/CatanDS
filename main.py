@@ -610,4 +610,4 @@ for _ in range(0, 100):
     t1 = time.time()
     repo.remotes.origin.pull()
     t2 = time.time()
-    elapsed_time = t2 - t1
+    print(t2 - t1)
