@@ -42,8 +42,6 @@ RCP == <<19, 19, 19, 19, 19>>
 DCP == <<2, 2, 2, 14, 5>>                             
 \* Bought Card Types
 BCT == [Monopoly: 0..2, YearOfPlenty: 0..2, RoadBuilding: 0..2, Knight: 0..14]  
-\* Available Card Types
-ACT == [Monopoly: 0..2, YearOfPlenty: 0..2, RoadBuilding: 0..2, Knight: 0..14]           
 \* Unveiled Card Types
 UCT == [Knight: 0..14, VictoryPoint: 0..5]                             
 \* Wharf Types
@@ -113,8 +111,6 @@ W   == {
   ]
 }
 ST  == {Village, City}                         \* Settlement Types
-BT  == {Road} \cup ST                          \* Building Types
-PIT == BT \cup {DevCard}                       \* Purchasable Item Types
 BP  == <<15, 5, 4>>                            \* Building Pool
 IP  == {PhaseOne, PhaseTwo}                    \* Initialization Phases
 TP  == {bot, DiceRoll, Trading, Building, top} \* Turn Phases
@@ -177,22 +173,22 @@ M   == {                                       \* Map
 isAdjacent(t1, t2) ==
   /\ t1 \in M /\ t2 \in M
   /\ LET 
-    arr1   == t1.coords.arr
-    row1   == t1.coords.row
-    col1   == t1.coords.col
-    arr2   == t2.coords.arr
-    row2   == t2.coords.row
-    col2   == t2.coords.col
-    deltas == 
-      IF arr1 = 0 
-      THEN
-        \* Top-left, Top-right, Left, Right, Bottom-left, Bottom-right
-        {<<1, -1, 0>>, <<1, -1, 1>>, <<0, 0, -1>>, <<0, 0, 1>>, <<1, 0, 0>>,  <<1, 0, 1>>}
-      ELSE
-        \* Top-left, Top-right, Left, Right, Bottom-left, Bottom-right
-        {<<-1, 0, -1>>, <<-1, 0, 0>>, <<0, 0, -1>>, <<0, 0, 1>>, <<-1, 1, -1>>, <<-1, 1, 0>>}
-      IN 
-        \E d \in deltas: arr2 = arr1 + d[1] /\ row2 = row1 + d[2] /\ col2 = col1 + d[3] 
+       arr1   == t1.coords.arr
+       row1   == t1.coords.row
+       col1   == t1.coords.col
+       arr2   == t2.coords.arr
+       row2   == t2.coords.row
+       col2   == t2.coords.col
+       deltas == 
+       IF arr1 = 0 
+       THEN
+         \* Top-left, Top-right, Left, Right, Bottom-left, Bottom-right
+         {<<1, -1, 0>>, <<1, -1, 1>>, <<0, 0, -1>>, <<0, 0, 1>>, <<1, 0, 0>>,  <<1, 0, 1>>}
+       ELSE
+         \* Top-left, Top-right, Left, Right, Bottom-left, Bottom-right
+         {<<-1, 0, -1>>, <<-1, 0, 0>>, <<0, 0, -1>>, <<0, 0, 1>>, <<-1, 1, -1>>, <<-1, 1, 0>>}
+     IN 
+       \E d \in deltas: arr2 = arr1 + d[1] /\ row2 = row1 + d[2] /\ col2 = col1 + d[3] 
 
 allAdjacent(t1,t2,t3) ==
   /\ t1 \in M /\ t2 \in M /\ t3 \in M
@@ -202,19 +198,19 @@ allAdjacent(t1,t2,t3) ==
     
 isCenterTile(t) ==
   /\ t \in M
-  /\ t.coords = [arr |-> 1, row|-> 1, col |-> 1]
+  /\ t.coords = [arr |-> 1, row |-> 1, col |-> 1]
     
 isCoast(t1, t2) ==
   /\ t1 \in M /\ t2 \in M
   /\ ~isCenterTile(t1) /\ ~isCenterTile(t2)
   /\ \/ t1.res = bot /\ t2.res # bot
-     \/t1.res # bot /\ t2.res = bot
+     \/ t1.res # bot /\ t2.res = bot
 
 \* All viable coordinate triplets
 CT == {{k[1], k[2], k[3]}: k \in {t \in M \X M \X M: 
         allAdjacent(t[1],t[2],t[3]) /\ (t[1].res # bot \/ t[2].res # bot \/ t[3].res # bot)}} 
 \* All viable coordinate pairs
-CD == {{k[1], k[2]}: k \in {t \in M \X M \X M: 
+CD == {{k[1], k[2]}: k \in {t \in M \X M: 
         isAdjacent(t[1],t[2]) /\ (t[1].res # bot \/ t[2].res # bot)}}
 
 ASSUME
@@ -296,20 +292,20 @@ DP == [Monopoly: 0..2, YearOfPlenty: 0..2, RoadBuilding: 0..2]
 PH == [
         RC:[Lumber: 0..19, Brick: 0..19, Wool: 0..19, Grain: 0..19, Ore: 0..19],
         DC:[BC: BCT,
-            AC: ACT,
+            AC: BCT,
             UC: UCT
            ]
       ]
 \* Hands      
-H   == [Players -> PH] 
+H  == [Players -> PH] 
 \* Player Buildings
 PB == [Road: 0..15, Village: 0..5, City: 0..4] 
 \* Buildings
-B   == [Players -> PB] 
+B  == [Players -> PB] 
 \* Settlement Points
-S   == [CT -> [own: Players \cup {bot}, st: ST \cup {bot}]]       
+S  == [CT -> [own: Players \cup {bot}, st: ST \cup {bot}]]       
 \* Road Points 
-R   == [CD -> [own: Players \cup {bot}]]
+R  == [CD -> [own: Players \cup {bot}]]
          
 TypeOK ==   
   \* Initialization State
@@ -356,14 +352,13 @@ buildable(s) ==
 InitPhaseOne ==
   /\ G.tp = bot
   /\ I.ip = PhaseOne
-  /\ I.ap \in Players
   \* choose where to settle with a village
   /\ \E sp \in DOMAIN G.s: G.s[sp].own = bot /\ buildable(sp)
     \* choose a road adjacent to the chosen settlement
     /\ \E rp \in DOMAIN G.r: G.r[rp].own = bot /\ isAdjacentRoadToSettlement(sp,rp) /\ roadHasNoBandit(rp)
     
-    /\ G' = [G EXCEPT !.b[I.ap].Road    = G.b[I.ap].Road    - 1,
-                      !.b[I.ap].Village = G.b[I.ap].Village - 1,
+    /\ G' = [G EXCEPT !.b[I.ap].Road    = @ - 1,
+                      !.b[I.ap].Village = @ - 1,
                       !.s[sp] = [own |-> I.ap, st |-> Village], 
                       !.r[rp] = [own |-> I.ap]
             ]
@@ -378,7 +373,6 @@ InitPhaseOne ==
 InitPhaseTwo ==
   /\ G.tp = bot
   /\ I.ip = PhaseTwo
-  /\ I.ap \in Players
   \* choose where to settle with the second village
   /\ \E sp \in DOMAIN G.s: G.s[sp].own = bot /\ buildable(sp)
     \* choose a road adjacent to the chosen settlement
@@ -784,11 +778,11 @@ SumDevelopmentAllPlayers(dct) ==
 --------
 
 ConservationOfResourceCards == 
-  /\ \A rct \in DOMAIN G.bnk.RC: SumResourceAllPlayers(rct) + G.bnk.RC[rct] = RCP[getIndex(rct, RCTST)]
+  \A rct \in DOMAIN G.bnk.RC: SumResourceAllPlayers(rct) + G.bnk.RC[rct] = RCP[getIndex(rct, RCTST)]
   
 ConservationOfBuildings ==
-  /\ \A p \in Players: 
-       G.b[p].Road    + NrPlayerRoadsOnMap(p)                = BP[1]
+  \A p \in Players: 
+    /\ G.b[p].Road    + NrPlayerRoadsOnMap(p)                = BP[1]
     /\ G.b[p].Village + NrPlayerSettlementOnMap(p, Village)  = BP[2]
     /\ G.b[p].City    + NrPlayerSettlementOnMap(p, City)     = BP[3]
 
