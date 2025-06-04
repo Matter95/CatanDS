@@ -8,16 +8,18 @@ CONSTANT PossiblePlayers,                                             \* The set
          ThreeToOne,                                                  \* Wharf Type
          Road, Village, City,                                         \* Building Type
          DevCard,                                                     \* Purchasable Item
-         PhaseOne,PhaseTwo,                                           \* Initialization Phases
+         PhaseOne,PhaseTwo,                                           \* Setup Phases
          DiceRoll, Trading, Building,                                 \* Turn Phases
          top                                                          \* top
 
+\* Choose an arbitrary order of players
 chooseSeq(P) ==
   LET RECURSIVE helper(_)
     helper(S) ==
       IF S = {} THEN <<>>
-      ELSE LET p == CHOOSE s \in S : TRUE IN
-        <<p>> \o helper(S\{p})
+      ELSE LET p == CHOOSE s \in S : TRUE 
+           IN
+             <<p>> \o helper(S\{p})
   IN helper(P)
 
 \* Players of the game
@@ -28,11 +30,13 @@ Players == CHOOSE
 P == chooseSeq(Players)                               
 \* Resource Card Types
 RCT == {Lumber, Brick, Wool, Grain, Ore}
-RCTMAP == [Lumber |-> Lumber, Brick |-> Brick, Wool |-> Wool, Grain |-> Grain, Ore |-> Ore]
+RCTMAP == [Lumber |-> Lumber, Brick |-> Brick, Wool |-> Wool,
+            Grain |-> Grain, Ore |-> Ore]
 RCTST == <<"Lumber", "Brick", "Wool", "Grain", "Ore">>   
 \* Progress Card Types
 PCT == {Monopoly, YearOfPlenty, RoadBuilding}
-PCTMAP == [Monopoly |-> "Monopoly", YearOfPlenty |-> "YearOfPlenty", RoadBuilding |-> "RoadBuilding"]
+PCTMAP == [Monopoly |-> "Monopoly", YearOfPlenty |-> "YearOfPlenty", 
+            RoadBuilding |-> "RoadBuilding"]
 PCTST == <<"Monopoly", "YearOfPlenty", "RoadBuilding">>
 \* Development Card Types
 DCT == PCT \cup {Knight, VictoryPoint}                
@@ -56,63 +60,81 @@ MT  == [
 \* Wharfs
 W   == {
   [coords |-> {
-                [coords |-> [arr |-> 0, row |-> 0,col |-> 1], res |-> bot, n |-> bot ], 
-                [coords |-> [arr |-> 1, row |-> 0,col |-> 2], res |-> Ore, n |-> 10  ]
+                [coords |-> [arr |-> 0, row |-> 0, col |-> 1], 
+                    res |-> bot, n |-> bot], 
+                [coords |-> [arr |-> 1, row |-> 0, col |-> 2], 
+                    res |-> Ore, n |-> 10]
               }, 
               wt |-> ThreeToOne
   ],
   [coords |-> {
-                [coords |-> [arr |-> 0, row |-> 0,col |-> 3], res |-> bot  , n |-> bot ], 
-                [coords |-> [arr |-> 1, row |-> 0,col |-> 3], res |-> Wool , n |-> 2   ]
+                [coords |-> [arr |-> 0, row |-> 0, col |-> 3], 
+                    res |-> bot  , n |-> bot], 
+                [coords |-> [arr |-> 1, row |-> 0, col |-> 3], 
+                    res |-> Wool , n |-> 2]
               }, 
               wt |-> Grain
   ],
   [coords |-> {
-                [coords |-> [arr |-> 1, row |-> 0,col |-> 5], res |-> bot  , n |-> bot ], 
-                [coords |-> [arr |-> 0, row |-> 1,col |-> 4], res |-> Brick, n |-> 10  ]
+                [coords |-> [arr |-> 1, row |-> 0, col |-> 5], 
+                    res |-> bot  , n |-> bot], 
+                [coords |-> [arr |-> 0, row |-> 1, col |-> 4], 
+                    res |-> Brick, n |-> 10]
               }, 
               wt |-> Ore
   ],
   [coords |-> {
-                [coords |-> [arr |-> 0, row |-> 1,col |-> 0], res |-> bot  , n |-> bot ], 
-                [coords |-> [arr |-> 0, row |-> 1,col |-> 1], res |-> Grain, n |-> 12  ]
+                [coords |-> [arr |-> 0, row |-> 1, col |-> 0], 
+                    res |-> bot  , n |-> bot], 
+                [coords |-> [arr |-> 0, row |-> 1, col |-> 1], 
+                    res |-> Grain, n |-> 12]
               }, 
               wt |-> Lumber
   ],
   [coords |-> {
-                [coords |-> [arr |-> 1, row |-> 1,col |-> 5], res |-> Ore, n |-> 8   ], 
-                [coords |-> [arr |-> 1, row |-> 1,col |-> 6], res |-> bot, n |-> bot ]
+                [coords |-> [arr |-> 1, row |-> 1, col |-> 5], 
+                    res |-> Ore, n |-> 8], 
+                [coords |-> [arr |-> 1, row |-> 1, col |-> 6], 
+                    res |-> bot, n |-> bot]
               }, 
               wt |-> ThreeToOne
   ],
   [coords |-> {
-                [coords |-> [arr |-> 0, row |-> 2,col |-> 0], res |-> bot  , n |-> bot ],
-                [coords |-> [arr |-> 0, row |-> 2,col |-> 1], res |-> Lumber, n |-> 8   ] 
+                [coords |-> [arr |-> 0, row |-> 2,col |-> 0], 
+                    res |-> bot  , n |-> bot],
+                [coords |-> [arr |-> 0, row |-> 2,col |-> 1], 
+                    res |-> Lumber, n |-> 8] 
               }, 
               wt |-> Brick
   ],
   [coords |-> {
-                [coords |-> [arr |-> 0, row |-> 2,col |-> 4], res |-> Wool , n |-> 5   ], 
-                [coords |-> [arr |-> 1, row |-> 2,col |-> 5], res |-> bot  , n |-> bot ]
+                [coords |-> [arr |-> 0, row |-> 2,col |-> 4], 
+                    res |-> Wool , n |-> 5], 
+                [coords |-> [arr |-> 1, row |-> 2,col |-> 5], 
+                    res |-> bot  , n |-> bot]
               }, 
               wt |-> Wool
   ],
   [coords |-> {
-                [coords |-> [arr |-> 1, row |-> 2,col |-> 2], res |-> Brick, n |-> 5   ], 
-                [coords |-> [arr |-> 0, row |-> 3,col |-> 1], res |-> bot  , n |-> bot ]
+                [coords |-> [arr |-> 1, row |-> 2,col |-> 2], 
+                    res |-> Brick, n |-> 5], 
+                [coords |-> [arr |-> 0, row |-> 3,col |-> 1], 
+                    res |-> bot  , n |-> bot]
               }, 
               wt |-> ThreeToOne
   ],
   [coords |-> {
-                [coords |-> [arr |-> 1, row |-> 2,col |-> 3], res |-> Grain, n |-> 6   ], 
-                [coords |-> [arr |-> 0, row |-> 3,col |-> 3], res |-> bot  , n |-> bot ]
+                [coords |-> [arr |-> 1, row |-> 2,col |-> 3], 
+                    res |-> Grain, n |-> 6], 
+                [coords |-> [arr |-> 0, row |-> 3,col |-> 3], 
+                    res |-> bot  , n |-> bot]
               }, 
               wt |-> ThreeToOne
   ]
 }
 ST  == {Village, City}                         \* Settlement Types
 BP  == <<15, 5, 4>>                            \* Building Pool
-IP  == {PhaseOne, PhaseTwo}                    \* Initialization Phases
+SUP  == {PhaseOne, PhaseTwo}                   \* Setup Phases
 TP  == {bot, DiceRoll, Trading, Building, top} \* Turn Phases
 M   == {                                       \* Map
   \* Top Row of Island
@@ -279,16 +301,19 @@ IterateRec(rec) == [d \in DOMAIN rec |-> (rec)[d]]
 
 --------
        
-VARIABLES I, \* Initialization State
-          G  \* Game State
+VARIABLES SU, \* Setup State
+          G   \* Game State
 \* Bank
 BNK ==                                     
     [
-      RC:[Lumber: 0..19, Brick: 0..19, Wool: 0..19, Grain: 0..19, Ore: 0..19], 
-      DC:[Monopoly: 0..2, YearOfPlenty: 0..2, RoadBuilding: 0..2, Knight: 0..14, VictoryPoint: 0..5]
+      RC:[Lumber: 0..19, Brick: 0..19, Wool: 0..19, 
+            Grain: 0..19, Ore: 0..19], 
+      DC:[Monopoly: 0..2, YearOfPlenty: 0..2, RoadBuilding: 0..2, 
+            Knight: 0..14, VictoryPoint: 0..5]
     ]
 \* Discard Pile
 DP == [Monopoly: 0..2, YearOfPlenty: 0..2, RoadBuilding: 0..2]     
+\* Player Hand
 PH == [
         RC:[Lumber: 0..19, Brick: 0..19, Wool: 0..19, Grain: 0..19, Ore: 0..19],
         DC:[BC: BCT,
@@ -308,8 +333,8 @@ S  == [CT -> [own: Players \cup {bot}, st: ST \cup {bot}]]
 R  == [CD -> [own: Players \cup {bot}]]
          
 TypeOK ==   
-  \* Initialization State
-  /\ I \in [ip: IP, ap: Players]      
+  \* Setup State
+  /\ SU \in [sup: SUP, ap: Players]      
   \* Game State
   /\ G \in [ap: Players, bnk: BNK, dp: DP, h: H, b: B, s: S, r: R, ba: M, tp: TP]
 
@@ -328,7 +353,9 @@ isAdjacentRoadToSettlement(s,r) ==
 isAdjacentRoad(r1,r2) ==
   /\ r1 \in DOMAIN G.r
   /\ r2 \in DOMAIN G.r
-  /\ \E s \in DOMAIN G.s: isAdjacentRoadToSettlement(s,r1) /\ isAdjacentRoadToSettlement(s,r2)
+  /\ \E s \in DOMAIN G.s: 
+    /\ isAdjacentRoadToSettlement(s,r1) 
+    /\ isAdjacentRoadToSettlement(s,r2)
   
 settlementHasNoBandit(s) ==
   /\ s \in DOMAIN G.s
@@ -345,50 +372,62 @@ tileHasNoBandit(t) ==
 buildable(s) == 
   /\ s \in DOMAIN G.s
   /\ settlementHasNoBandit(s)
-  /\ \A as \in DOMAIN G.s: isAdjacentSettlement(s,as) => G.s[as].own = bot
+  /\ \A as \in DOMAIN G.s: 
+      isAdjacentSettlement(s,as) => G.s[as].own = bot
   
 --------
 
-InitPhaseOne ==
+SetupPhaseOne ==
   /\ G.tp = bot
-  /\ I.ip = PhaseOne
+  /\ SU.sup = PhaseOne
   \* choose where to settle with a village
   /\ \E sp \in DOMAIN G.s: G.s[sp].own = bot /\ buildable(sp)
     \* choose a road adjacent to the chosen settlement
-    /\ \E rp \in DOMAIN G.r: G.r[rp].own = bot /\ isAdjacentRoadToSettlement(sp,rp) /\ roadHasNoBandit(rp)
+    /\ \E rp \in DOMAIN G.r: 
+      /\ G.r[rp].own = bot 
+      /\ isAdjacentRoadToSettlement(sp,rp) 
+       /\ roadHasNoBandit(rp)
     
-    /\ G' = [G EXCEPT !.b[I.ap].Road    = @ - 1,
-                      !.b[I.ap].Village = @ - 1,
-                      !.s[sp] = [own |-> I.ap, st |-> Village], 
-                      !.r[rp] = [own |-> I.ap]
+    /\ G' = [G EXCEPT !.b[SU.ap].Road    = @ - 1,
+                      !.b[SU.ap].Village = @ - 1,
+                      !.s[sp] = [own |-> SU.ap, st |-> Village], 
+                      !.r[rp] = [own |-> SU.ap]
             ]
-    /\ IF getIndex(I.ap, P) = Cardinality(Players)
+    /\ IF getIndex(SU.ap, P) = Cardinality(Players)
             THEN 
-              I' = [I EXCEPT  !.ap = reverse(P)[1],
-                              !.ip = PhaseTwo
+              SU' = [SU EXCEPT  !.ap = reverse(P)[1],
+                                !.sup = PhaseTwo
                    ]
             ELSE 
-              I' = [I EXCEPT  !.ap = P[(getIndex(I.ap, P) + 1) % (Cardinality(Players) + 1)]]
+              SU' = [SU EXCEPT  !.ap = P[(getIndex(SU.ap, P) + 1)]]
 
-InitPhaseTwo ==
+SetupPhaseTwo ==
   /\ G.tp = bot
-  /\ I.ip = PhaseTwo
+  /\ SU.sup = PhaseTwo
   \* choose where to settle with the second village
-  /\ \E sp \in DOMAIN G.s: G.s[sp].own = bot /\ buildable(sp)
+  /\ \E sp \in DOMAIN G.s: 
+    /\ G.s[sp].own = bot 
+    /\ buildable(sp)
     \* choose a road adjacent to the chosen settlement
-    /\ \E rp \in DOMAIN G.r: G.r[rp].own = bot /\ isAdjacentRoadToSettlement(sp,rp) /\ roadHasNoBandit(rp)
-      /\ I' = [I EXCEPT !.ap = IF getIndex(I.ap, reverse(P)) = Cardinality(Players) THEN @
-                               ELSE reverse(P)[(getIndex(I.ap, reverse(P)) + 1) % (Cardinality(Players) + 1)]]
+    /\ \E rp \in DOMAIN G.r: 
+      /\ G.r[rp].own = bot 
+      /\ isAdjacentRoadToSettlement(sp,rp) 
+      /\ roadHasNoBandit(rp)
+      /\ SU' = [SU EXCEPT !.ap = IF getIndex(SU.ap, reverse(P)) = Cardinality(Players) THEN @
+                               ELSE reverse(P)[(getIndex(SU.ap, reverse(P)) + 1)]]
       \* receive resources from adjacent tiles to chosen settlement
       /\ LET gain == SumResFunc([c \in {s \in sp: s.res # bot} |-> 1])
-         IN G' = [G EXCEPT !.h[I.ap].RC = gain,
+         IN G' = [G EXCEPT !.h[SU.ap].RC = gain,
                            !.bnk.RC     = SubRec(@, gain),
-                           !.b[I.ap].Road    = @ - 1,
-                           !.b[I.ap].Village = @ - 1,
-                           !.s[sp] = [own |-> I.ap, st |-> Village], 
-                           !.r[rp] = [own |-> I.ap],
-                           !.tp = IF getIndex(I.ap, reverse(P)) = Cardinality(Players) THEN DiceRoll ELSE bot  
-                  ] 
+                           !.b[SU.ap].Road    = @ - 1,
+                           !.b[SU.ap].Village = @ - 1,
+                           !.s[sp] = [own |-> SU.ap, st |-> Village], 
+                           !.r[rp] = [own |-> SU.ap],
+                           !.tp = IF getIndex(SU.ap, reverse(P)) = Cardinality(Players) 
+                                  THEN DiceRoll 
+                                  ELSE bot  
+                 ]
+                   
 --------
   
 hasSettlementOnTile(t,p) ==
@@ -403,100 +442,85 @@ SumResourceAllPlayers(rct) == SumFunc([p \in Players |-> (G.h[p].RC)[rct]])
 
 ResourceGainPlayer(p,d) ==
   LET 
-    V == {s \in UNION {sp \in DOMAIN G.s: G.s[sp].own # bot /\ G.s[sp].st = Village}: s.n = d} 
-    C == {s \in UNION {sp \in DOMAIN G.s: G.s[sp].own # bot /\ G.s[sp].st = City}: s.n = d}
+    V == {s \in UNION {sp \in DOMAIN G.s: G.s[sp].own = p /\ G.s[sp].st = Village}: s.n = d} 
+    C == {s \in UNION {sp \in DOMAIN G.s: G.s[sp].own = p /\ G.s[sp].st = City}: s.n = d}
   IN
     SumResFunc([c \in (V \cup C) |-> IF c \in C THEN 2 ELSE 1])
 
-\* NOTE: I wanted this to be the set of all possible loss choices for all players, but could not find the correct notation
-\* example: p2 less than 8 cards, p1 |-> [Lumber |-> 4, Brick |-> 4, Wool |-> 0, Grain |-> 0, Ore |-> 0]
-\* what I got: 
-\*             { p1 :> {[Lumber |-> 4, Brick |-> 0, Wool |-> 0, Grain |-> 0, Ore |-> 0],
-\*                      [Lumber |-> 3, Brick |-> 1, Wool |-> 0, Grain |-> 0, Ore |-> 0],
-\*                      [Lumber |-> 2, Brick |-> 2, Wool |-> 0, Grain |-> 0, Ore |-> 0],
-\*                      [Lumber |-> 1, Brick |-> 3, Wool |-> 0, Grain |-> 0, Ore |-> 0],
-\*                      [Lumber |-> 0, Brick |-> 4, Wool |-> 0, Grain |-> 0, Ore |-> 0]
-\*                      } @@
-\*               p2 :> [Lumber |-> 0, Brick |-> 0, Wool |-> 0, Grain |-> 0, Ore |-> 0]
-\*             }
-\* what I wanted: 
-\*             {{ p1 :> [Lumber |-> 4, Brick |-> 0, Wool |-> 0, Grain |-> 0, Ore |-> 0] @@
-\*                p2 :> [Lumber |-> 0, Brick |-> 0, Wool |-> 0, Grain |-> 0, Ore |-> 0]},
-\*                p1 :> [Lumber |-> 3, Brick |-> 1, Wool |-> 0, Grain |-> 0, Ore |-> 0] @@
-\*                p2 :> [Lumber |-> 0, Brick |-> 0, Wool |-> 0, Grain |-> 0, Ore |-> 0]},
-\*                p1 :> [Lumber |-> 2, Brick |-> 2, Wool |-> 0, Grain |-> 0, Ore |-> 0] @@
-\*                p2 :> [Lumber |-> 0, Brick |-> 0, Wool |-> 0, Grain |-> 0, Ore |-> 0]},
-\*                p1 :> [Lumber |-> 1, Brick |-> 3, Wool |-> 0, Grain |-> 0, Ore |-> 0] @@
-\*                p2 :> [Lumber |-> 0, Brick |-> 0, Wool |-> 0, Grain |-> 0, Ore |-> 0]},
-\*                p1 :> [Lumber |-> 0, Brick |-> 4, Wool |-> 0, Grain |-> 0, Ore |-> 0] @@
-\*                p2 :> [Lumber |-> 0, Brick |-> 0, Wool |-> 0, Grain |-> 0, Ore |-> 0]}
-\*             }
-\* Now I just pick one of the possible elements in all p with CHOOSE ending with a single choice per player
-
-ResourceLossChoices == 
-  [p \in Players |-> IF SumResourcesSinglePlayer(p) <= 7 
-  THEN [Lumber |-> 0, Brick |-> 0, Wool |-> 0, Grain |-> 0, Ore |-> 0]
-  ELSE CHOOSE l \in [Lumber:  0..G.h[p].RC.Lumber, 
-                     Brick:   0..G.h[p].RC.Brick, 
-                     Wool:    0..G.h[p].RC.Wool, 
-                     Grain:   0..G.h[p].RC.Grain, 
-                     Ore:     0..G.h[p].RC.Ore
-                    ]: SumFunc(IterateRec(l)) = SumResourcesSinglePlayer(p) \div 2]
+\* gather all resource records with a sum between 4 and 7
+ResourceRecsWithSpecificSum == {rec \in [Lumber: 0..6, Brick: 0..6, Wool: 0..6, 
+  Grain: 0..6, Ore: 0..6]:
+    /\ SumFunc(IterateRec(rec)) >= 4 
+    /\ SumFunc(IterateRec(rec)) <= 7
+  }
 
 --------
+
 DiceRollPhase ==
   /\  G.tp = DiceRoll
-  /\  \E d \in 1..12: IF d = 7
-    THEN 
-    LET loss == ResourceLossChoices
-    IN
+  /\  \E d \in 2..12: 
+    IF d = 7
+    THEN \E loss \in [Players -> ResourceRecsWithSpecificSum]: 
+      /\ \A p \in Players:
+        IF SumResourcesSinglePlayer(p) <= 7
+        THEN loss[p] = [Lumber |-> 0, Brick |-> 0, Wool |-> 0, 
+          Grain |-> 0, Ore |-> 0]
+        ELSE
+          /\ SumFunc(IterateRec(loss[p])) = SumResourcesSinglePlayer(p) \div 2 
+          /\ \A f \in DOMAIN G.h[p].RC:
+            loss[p][f] \in 0..G.h[p].RC[f]
       \* choose a tile to move the bandit to
-      \E t \in BanditMoves: \E q \in Players: q # G.ap /\ hasSettlementOnTile(t,q) /\
+      /\ \E t \in BanditMoves: \E q \in Players: q # G.ap /\ hasSettlementOnTile(t,q)
         \* random resource from adjacent player of t
-        \E res \in DOMAIN G.bnk.RC: G.h[q].RC[res] >= 0
+        /\ \E res \in DOMAIN G.bnk.RC: G.h[q].RC[res] >= 0
           /\ G' = [G EXCEPT !.bnk.RC = AddRec(@, SumResRecs(loss)),
                             !.h = [p \in Players |-> 
-                                     \* Can steal resource from player (even after loosing resources)
-                                    [RC |-> IF G.h[q].RC[res] - loss[q][res] > 0 
-                                            THEN IF p = G.ap THEN AddRecEl(SubRec(G.h[p].RC, loss[p]), res, 1)
-                                                 ELSE IF p = q THEN AddRecEl(SubRec(G.h[p].RC, loss[p]), res, -1)
-                                                 ELSE SubRec(G.h[p].RC, loss[p])
-                                            ELSE SubRec(G.h[p].RC, loss[p]),
-                                     \* Move bought cards to available cards
-                                     DC |-> [BC |-> [Monopoly|-> 0, YearOfPlenty|-> 0, RoadBuilding|-> 0, Knight|-> 0],
-                                             AC |-> AddRec(G.h[p].DC.AC, G.h[p].DC.BC),
-                                             UC |-> G.h[p].DC.UC
-                                            ]
-                                    ]
-                                  ],
+                                   \* Can steal resource from player (even after loosing resources)
+                                  [RC |-> IF G.h[q].RC[res] - loss[q][res] > 0 
+                                          THEN IF p = G.ap THEN AddRecEl(
+                                                    SubRec(G.h[p].RC, loss[p]), 
+                                                    res, 
+                                                    1)
+                                               ELSE IF p = q THEN AddRecEl(
+                                                    SubRec(G.h[p].RC, loss[p]),
+                                                    res, 
+                                                    -1)
+                                               ELSE SubRec(G.h[p].RC, loss[p])
+                                          ELSE SubRec(G.h[p].RC, loss[p]),
+                                  \* Move bought cards to available cards
+                                  DC |-> [BC |-> [Monopoly|-> 0, YearOfPlenty|-> 0, 
+                                                  RoadBuilding|-> 0, Knight|-> 0],
+                                         AC |-> AddRec(G.h[p].DC.AC, G.h[p].DC.BC),
+                                         UC |-> G.h[p].DC.UC]
+                                  ]],
                             !.ba = t,
                             !.tp = Trading
-                  ]
-          /\ UNCHANGED(I)
+              ]
+          /\ UNCHANGED(SU)
     ELSE
-    LET
-      \* resource gain for all players given the current dice roll
-      gain == [p \in Players |-> ResourceGainPlayer(p,d)]
-    IN
-      \* if bank does not have all the resources, do not change state and continue (otherwise will violate typeOK)
-      /\ IF \A res \in DOMAIN G.bnk.RC: G.bnk.RC[res] >= SumResRecs(gain)[res]
-         THEN 
-           /\ G' = [G EXCEPT !.bnk.RC = SubRec(@, SumResRecs(gain)),
-                             !.h = [p \in Players |-> 
-                                     [RC |-> AddRec(G.h[p].RC, gain[p]), 
-                                      \* Move bought cards to available cards
-                                      DC |-> [BC |-> [Monopoly|-> 0, YearOfPlenty|-> 0, RoadBuilding|-> 0, Knight|-> 0],
-                                              AC |-> AddRec(G.h[p].DC.AC, G.h[p].DC.BC),
-                                              UC |-> G.h[p].DC.UC
-                                             ]
-                                     ]
-                                   ],
-                             !.tp = Trading
-                   ]
-           /\ UNCHANGED(I)
-         ELSE
-           /\ UNCHANGED<<I,G>>
-       
+      LET
+        \* resource gain for all players given the current dice roll
+        gain == [p \in Players |-> ResourceGainPlayer(p,d)]
+      IN
+        \* if bank does not have all the resources, do not change state and continue (otherwise will violate typeOK)
+        IF \A res \in DOMAIN G.bnk.RC: G.bnk.RC[res] >= SumResRecs(gain)[res]
+        THEN 
+          /\ G' = [G EXCEPT !.bnk.RC = SubRec(@, SumResRecs(gain)),
+                               !.h = [p \in Players |-> 
+                                       [RC |-> AddRec(G.h[p].RC, gain[p]), 
+                                        \* Move bought cards to available cards
+                                        DC |-> [BC |-> [Monopoly|-> 0, YearOfPlenty|-> 0, 
+                                                        RoadBuilding|-> 0, Knight|-> 0],
+                                                AC |-> AddRec(G.h[p].DC.AC, G.h[p].DC.BC),
+                                                UC |-> G.h[p].DC.UC
+                                               ]
+                                       ]
+                                     ],
+                               !.tp = Trading
+                     ]
+          /\ UNCHANGED(SU)
+        ELSE UNCHANGED<<SU,G>>
+         
 --------
 
 PlayerPorts(p) == {w \in W: \E sp \in DOMAIN G.s: w.coords \subseteq sp /\ G.s[sp].own = p} 
@@ -506,7 +530,7 @@ PlayerPorts(p) == {w \in W: \E sp \in DOMAIN G.s: w.coords \subseteq sp /\ G.s[s
 EmptyTrade ==
   /\ G.tp = Trading
   /\ G' = [G EXCEPT !.tp = Building]
-  /\ UNCHANGED(I)
+  /\ UNCHANGED(SU)
 
 TradeFourToOne ==
   /\ G.tp = Trading
@@ -517,28 +541,34 @@ TradeFourToOne ==
          /\ G' = [G EXCEPT !.bnk.RC = AddRecEl(AddRecEl(@, give, 4), receive, -1),
                            !.h[G.ap].RC = AddRecEl(AddRecEl(@, give, -4), receive, 1)
                  ]
-         /\ UNCHANGED(I)
+         /\ UNCHANGED(SU)
   
 TradeThreeToOne ==
   /\ G.tp = Trading
   \* choose a resource to trade with (needs 3:1 port)
-  /\ \E give \in {res \in DOMAIN G.bnk.RC: G.h[G.ap].RC[res] >= 3 /\ \E w \in PlayerPorts(G.ap): w.wt = ThreeToOne}:
-       \* choose a resource to trade for
-       \E receive \in {res \in DOMAIN G.bnk.RC: G.bnk.RC[res] > 0}:
-         /\ G' = [G EXCEPT !.bnk.RC = AddRecEl(AddRecEl(@, give, 3), receive, -1),
+  /\ \E give \in {res \in DOMAIN G.bnk.RC: 
+    /\ G.h[G.ap].RC[res] >= 3 
+    /\ \E w \in PlayerPorts(G.ap): w.wt = ThreeToOne}:
+      \* choose a resource to trade for
+      /\ \E receive \in {res \in DOMAIN G.bnk.RC: G.bnk.RC[res] > 0}:
+        /\ G' = [G EXCEPT !.bnk.RC = AddRecEl(AddRecEl(@, give, 3), receive, -1),
                            !.h[G.ap].RC = AddRecEl(AddRecEl(@, give, -3), receive, 1)
                  ]
-         /\ UNCHANGED(I)
+        /\ UNCHANGED(SU)
 TradeTwoToOne ==
   /\ G.tp = Trading
   \* choose a resource to trade with (needs specific 2:1 port)
-  /\ \E give \in {rct \in DOMAIN G.bnk.RC: G.h[G.ap].RC[rct] >= 2 /\ \E w \in PlayerPorts(G.ap): w.wt \in RCT  /\ w.wt = RCTMAP[rct]}:
-       \* choose a resource to trade for
-       \E receive \in {rct \in DOMAIN G.bnk.RC: G.bnk.RC[rct] > 0}:
-         /\ G' = [G EXCEPT !.bnk.RC = AddRecEl(AddRecEl(@, give, 2), receive, -1),
+  /\ \E give \in {rct \in DOMAIN G.bnk.RC: 
+    /\ G.h[G.ap].RC[rct] >= 2 
+    /\ \E w \in PlayerPorts(G.ap): 
+      /\ w.wt \in RCT  
+      /\ w.wt = RCTMAP[rct]}:
+        \* choose a resource to trade for
+        /\ \E receive \in {rct \in DOMAIN G.bnk.RC: G.bnk.RC[rct] > 0}:
+          /\ G' = [G EXCEPT !.bnk.RC = AddRecEl(AddRecEl(@, give, 2), receive, -1),
                            !.h[G.ap].RC = AddRecEl(AddRecEl(@, give, -2), receive, 1)
                  ]
-         /\ UNCHANGED(I)
+          /\ UNCHANGED(SU)
 
 --------
 
@@ -579,7 +609,9 @@ isPath(seq) ==
 
 Max(set) == CHOOSE el \in set: \A n \in set: el >= n 
 
-AllPaths == [p \in Players |->{Cardinality(r): r \in {rt \in AllRoadSets[p]: rt # {} /\ isPath(chooseSeq(rt))}}]
+AllPaths == [p \in Players |->{Cardinality(r): 
+              r \in {rt \in AllRoadSets[p]: 
+                rt # {} /\ isPath(chooseSeq(rt))}}]
 
 PlayerPoints(p) == 
   LET 
@@ -587,15 +619,27 @@ PlayerPoints(p) ==
     V == {sp \in DOMAIN G.s: G.s[sp].own = p /\ G.s[sp].st = Village} 
     C == {sp \in DOMAIN G.s: G.s[sp].own = p /\ G.s[sp].st = City}
     \* Player with the most Knights (threshold at least 3) gets 2 points
-    MightiestArmy == IF G.h[p].DC.UC.Knight >= 3 /\ \A q \in Players: q # p /\ G.h[p].DC.UC.Knight >= G.h[q].DC.UC.Knight
+    MightiestArmy == IF 
+                        /\ G.h[p].DC.UC.Knight >= 3 
+                        /\ \A q \in Players: 
+                          /\ q # p 
+                          /\ G.h[p].DC.UC.Knight >= G.h[q].DC.UC.Knight
                      THEN 2 
                      ELSE 0
     \* Player with the longest road (threshold at least 5) gets 2 points
-    LongestRoad == IF Cardinality(AllPaths[G.ap]) > 0 /\ Max(AllPaths[G.ap]) > 5 /\ \A q \in Players: q # p /\ Max(AllPaths[G.ap]) >= Max(AllPaths[q])
+    LongestRoad == IF 
+                      /\ Cardinality(AllPaths[G.ap]) > 0 
+                      /\ Max(AllPaths[G.ap]) > 5 
+                      /\ \A q \in Players: 
+                        /\ q # p 
+                        /\ Max(AllPaths[G.ap]) >= Max(AllPaths[q])
                    THEN 2
                    ELSE 0
   IN
-    SumFunc([c \in (V \cup C) |-> IF c \in C THEN 2 ELSE 1]) + G.h[p].DC.UC.VictoryPoint + MightiestArmy + LongestRoad
+    SumFunc([c \in (V \cup C) |-> IF c \in C THEN 2 ELSE 1]) + 
+      G.h[p].DC.UC.VictoryPoint + 
+      MightiestArmy + 
+      LongestRoad
 
 --------
      
@@ -603,7 +647,7 @@ EmptyBuild ==
   /\ G.tp = Building
   \* check if a player has enough points to win the game, if not continue
   /\ G' = [G EXCEPT !.tp = IF PlayerPoints(G.ap) >= 10 THEN top ELSE DiceRoll]
-  /\ UNCHANGED(I)
+  /\ UNCHANGED(SU)
 
 BuildRoad ==
   /\ G.tp = Building
@@ -618,7 +662,7 @@ BuildRoad ==
                       !.b[G.ap].Road = @ - 1,
                       !.r[rp] = [own |-> G.ap]
             ]
-    /\ UNCHANGED(I)
+    /\ UNCHANGED(SU)
     
 BuildVillage ==
   /\ G.tp = Building
@@ -632,7 +676,7 @@ BuildVillage ==
                       !.b[G.ap].Village = @ - 1,
                       !.s[sp] = [own |-> G.ap, st |-> Village]
             ]
-    /\ UNCHANGED(I)
+    /\ UNCHANGED(SU)
 
 BuildCity ==
   /\ G.tp = Building
@@ -646,7 +690,7 @@ BuildCity ==
                       !.b[G.ap].City = @ - 1,
                       !.s[sp] = [own |-> G.ap, st |-> City]
             ]
-    /\ UNCHANGED(I)
+    /\ UNCHANGED(SU)
     
 BuyDevCard ==
   /\ G.tp = Building
@@ -666,7 +710,7 @@ BuyDevCard ==
                                            UC |-> @.UC
                                           ]
             ]
-    /\ UNCHANGED(I)
+    /\ UNCHANGED(SU)
     
 --------
 
@@ -679,19 +723,28 @@ PlayMonopoly ==
       G' = [G EXCEPT !.dp.Monopoly = @ + 1,
                      !.h = [p \in Players |-> 
                               \* Monopolize one resource from all players 
-                              [RC |-> IF p = G.ap THEN AddRecEl(G.h[p].RC, res, (gain - G.h[p].RC[res]))
-                                      ELSE AddRecEl(G.h[p].RC, res, -G.h[p].RC[res]),
+                              [RC |-> IF p = G.ap THEN AddRecEl(
+                                                  G.h[p].RC, 
+                                                  res, 
+                                                  (gain - G.h[p].RC[res]))
+                                      ELSE AddRecEl(
+                                              G.h[p].RC, 
+                                              res, 
+                                              -G.h[p].RC[res]),
                                       \* Move bought cards to available cards
                                DC |-> IF p = G.ap 
                                       THEN [BC |-> G.h[p].DC.BC,
-                                            AC |-> AddRecEl(G.h[p].DC.AC, "Monopoly", -1),
+                                            AC |-> AddRecEl(
+                                                G.h[p].DC.AC, 
+                                                "Monopoly", 
+                                                -1),
                                             UC |-> G.h[p].DC.UC
                                            ]
                                       ELSE G.h[p].DC
                               ]
                            ]
             ]
-  /\ UNCHANGED(I) 
+  /\ UNCHANGED(SU) 
 
 \* Year of plenty lets the player choose two resource cards to receive. Put onto the discard pile after playing.
 PlayYearOfPlenty ==
@@ -702,7 +755,7 @@ PlayYearOfPlenty ==
                         !.h[G.ap].DC.AC.YearOfPlenty = @ - 1,
                         !.dp.YearOfPlenty = @ + 1
               ]
-      /\ UNCHANGED(I) 
+      /\ UNCHANGED(SU) 
 
 \* The player can place two roads onto the map without paying. Put onto the discard pile after playing.
 PlayRoadBuilding ==
@@ -725,7 +778,7 @@ PlayRoadBuilding ==
                               !.r[rp1] = [own |-> G.ap],
                               !.r[rp2] = [own |-> G.ap]
                     ]
-            /\ UNCHANGED(I)
+            /\ UNCHANGED(SU)
             
 \* Move the bandit and steal a resource if another player is adjacent to the robbers field. 
 \* Knight cards are unveiled after activation and work towards the mightiest army points.            
@@ -742,28 +795,30 @@ PlayKnight ==
                           !.h[G.ap].DC.UC.Knight = @ + 1,
                           !.ba = t
               ]
-        /\ UNCHANGED(I)
+        /\ UNCHANGED(SU)
       ELSE
         /\ G' = [G EXCEPT !.h[G.ap].DC.AC.Knight = @ - 1,
                           !.h[G.ap].DC.UC.Knight = @ + 1,
                           !.ba = t
                 ]
-        /\ UNCHANGED(I)
+        /\ UNCHANGED(SU)
 
 \* Play a card in the Available Card set of a players hand 
 PlayDevCard == 
   /\ G.tp \in {Trading, Building}
   /\ \E dc \in DOMAIN G.h[G.ap].DC.AC: G.h[G.ap].DC.AC[dc] > 0 /\
-    IF dc = "Monopoly" THEN UNCHANGED<<G,I>> \*PlayMonopoly
-    ELSE IF dc = "YearOfPlenty" THEN UNCHANGED<<G,I>> \*PlayYearOfPlenty
-    ELSE IF dc = "RoadBuilding" THEN UNCHANGED<<G,I>> \*PlayRoadBuilding
-    ELSE UNCHANGED<<G,I>> \*PlayKnight
+    IF dc = "Monopoly" THEN UNCHANGED<<G,SU>> \*PlayMonopoly
+    ELSE IF dc = "YearOfPlenty" THEN UNCHANGED<<G,SU>> \*PlayYearOfPlenty
+    ELSE IF dc = "RoadBuilding" THEN UNCHANGED<<G,SU>> \*PlayRoadBuilding
+    ELSE UNCHANGED<<G,SU>> \*PlayKnight
 
 --------
 
-NrPlayerRoadsOnMap(p) == SumFunc([d \in DOMAIN G.r |-> IF G.r[d].own = p THEN 1 ELSE 0])
+NrPlayerRoadsOnMap(p) == 
+  SumFunc([d \in DOMAIN G.r |-> IF G.r[d].own = p THEN 1 ELSE 0])
 
-NrPlayerSettlementOnMap(p, st) == SumFunc([d \in DOMAIN G.s |-> IF G.s[d].own = p /\ G.s[d].st = st THEN 1 ELSE 0])
+NrPlayerSettlementOnMap(p, st) == 
+  SumFunc([d \in DOMAIN G.s |-> IF G.s[d].own = p /\ G.s[d].st = st THEN 1 ELSE 0])
 
 SumDevelopmentAllPlayers(dct) == 
   IF dct \in DOMAIN G.dp
@@ -778,7 +833,8 @@ SumDevelopmentAllPlayers(dct) ==
 --------
 
 ConservationOfResourceCards == 
-  \A rct \in DOMAIN G.bnk.RC: SumResourceAllPlayers(rct) + G.bnk.RC[rct] = RCP[getIndex(rct, RCTST)]
+  \A rct \in DOMAIN G.bnk.RC: 
+    SumResourceAllPlayers(rct) + G.bnk.RC[rct] = RCP[getIndex(rct, RCTST)]
   
 ConservationOfBuildings ==
   \A p \in Players: 
@@ -797,33 +853,41 @@ ConservationOfDevelopmentCards ==
 --------
 
 Init ==
-  \* Initialization State
-  /\ I = [ip |-> PhaseOne, ap |-> P[1]] 
+  \* Setup State
+  /\ SU = [sup |-> PhaseOne, ap |-> P[1]] 
   \* Game State
   /\ G = [                              
            ap  |-> P[1], 
            bnk |-> [
-                     RC |-> [Lumber |-> 19, Brick |-> 19, Wool |-> 19, Grain |-> 19, Ore |-> 19], 
-                     DC |-> [Monopoly |-> 2, YearOfPlenty |-> 2, RoadBuilding |-> 2, Knight |-> 14, VictoryPoint |-> 5]
+                     RC |-> [Lumber |-> 19, Brick |-> 19, Wool |-> 19, 
+                              Grain |-> 19, Ore |-> 19], 
+                     DC |-> [Monopoly |-> 2, YearOfPlenty |-> 2, 
+                            RoadBuilding |-> 2, Knight |-> 14, 
+                            VictoryPoint |-> 5]
                    ],
            dp  |-> [Monopoly |-> 0, YearOfPlenty |-> 0, RoadBuilding |-> 0],
            h   |-> [p \in Players |-> [
-                      RC |-> [Lumber |-> 0, Brick |-> 0, Wool |-> 0, Grain |-> 0, Ore |-> 0],
-                      DC |-> [BC |-> [Monopoly|-> 0, YearOfPlenty|-> 0, RoadBuilding|-> 0, Knight|-> 0],
-                              AC |-> [Monopoly|-> 0, YearOfPlenty|-> 0, RoadBuilding|-> 0, Knight|-> 0],
+                      RC |-> [Lumber |-> 0, Brick |-> 0, Wool |-> 0, 
+                              Grain |-> 0, Ore |-> 0],
+                      DC |-> [BC |-> [Monopoly|-> 0, YearOfPlenty|-> 0, 
+                              RoadBuilding|-> 0, Knight|-> 0],
+                              AC |-> [Monopoly|-> 0, YearOfPlenty|-> 0, 
+                                      RoadBuilding|-> 0, Knight|-> 0],
                               UC |-> [Knight|-> 0, VictoryPoint|-> 0]
                       ]
                    ]],
-           b   |-> [p \in Players |-> [Road |-> 15, Village |-> 5, City |-> 4]],
+           b   |-> [p \in Players |-> [Road |-> 15, Village |-> 5, 
+                    City |-> 4]],
            s   |-> [c \in CT |-> [own |-> bot, st |-> bot]],
            r   |-> [c \in CD |-> [own |-> bot]],
-           ba  |-> [coords |-> [arr |-> 1, row |-> 1,col |-> 3], res |-> bot, n |-> bot],
+           ba  |-> [coords |-> [arr |-> 1, row |-> 1,col |-> 3], 
+                    res |-> bot, n |-> bot],
            tp  |-> bot
          ]
 
 Next == 
-  \/ InitPhaseOne
-  \/ InitPhaseTwo
+  \/ SetupPhaseOne
+  \/ SetupPhaseTwo
   \/ DiceRollPhase
   \/ EmptyTrade
   \/ TradeFourToOne
@@ -836,22 +900,22 @@ Next ==
   \/ BuyDevCard
   \/ PlayDevCard
 
-Spec == Init /\ [][Next]_<<G, I>>
+Spec == Init /\ [][Next]_<<G, SU>>
 
 WeakFairness ==
-    /\ WF_<<G, I>>(InitPhaseOne)
-    /\ WF_<<G, I>>(InitPhaseTwo)
-    /\ WF_<<G, I>>(DiceRollPhase)
-    /\ WF_<<G, I>>(EmptyTrade)
-    /\ WF_<<G, I>>(TradeFourToOne)
-    /\ WF_<<G, I>>(TradeThreeToOne)
-    /\ WF_<<G, I>>(TradeTwoToOne)
-    /\ WF_<<G, I>>(EmptyBuild)
-    /\ WF_<<G, I>>(BuildRoad)
-    /\ WF_<<G, I>>(BuildVillage)
-    /\ WF_<<G, I>>(BuildCity)
-    /\ WF_<<G, I>>(BuyDevCard)
-    /\ WF_<<G, I>>(PlayDevCard)
+    /\ WF_<<G, SU>>(SetupPhaseOne)
+    /\ WF_<<G, SU>>(SetupPhaseTwo)
+    /\ WF_<<G, SU>>(DiceRollPhase)
+    /\ WF_<<G, SU>>(EmptyTrade)
+    /\ WF_<<G, SU>>(TradeFourToOne)
+    /\ WF_<<G, SU>>(TradeThreeToOne)
+    /\ WF_<<G, SU>>(TradeTwoToOne)
+    /\ WF_<<G, SU>>(EmptyBuild)
+    /\ WF_<<G, SU>>(BuildRoad)
+    /\ WF_<<G, SU>>(BuildVillage)
+    /\ WF_<<G, SU>>(BuildCity)
+    /\ WF_<<G, SU>>(BuyDevCard)
+    /\ WF_<<G, SU>>(PlayDevCard)
     
 FairSpec ==
     /\ Spec

@@ -39,6 +39,6 @@ def init_repo(path: str, repo_name: str, author: str, email: str, bare: bool) ->
 def get_all_loss_references(repo: git.Repo, commit: git.Commit):
     children = []
     for ref in repo.references:
-        if ref.name.__contains__("loss_player") and commit in ref.commit.parents:
+        if ref.name.__contains__("loss_") and commit in ref.commit.parents:
             children.append(ref.commit)
     return children

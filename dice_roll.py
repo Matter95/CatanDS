@@ -1,4 +1,5 @@
 import os
+from functools import partial
 from math import floor
 from random import randrange
 
@@ -43,8 +44,9 @@ def roll_dice(repo: git.Repo, hexagons: [HexagonTile]):
 
     # check if references for loss or empty were created for this player
     for ref in repo.references:
-        if ref.name.__contains__(f"loss_player_{local_player + 1}"):
+        if ref.name.__contains__(f"{parent}_loss_{author_name}"):
             has_commit = True
+            break
 
     update = True
     # we already rolled the dice and have a result or are waiting for players to choose their loss
@@ -74,13 +76,13 @@ def roll_dice(repo: git.Repo, hexagons: [HexagonTile]):
                         # hands are mutex, bank needs to be merged
                         else:
                             # get player number of the commit
-                            player_nr = child.message
-                            index = player_nr.find("player_")
-                            player_nr = int(player_nr[index + len("player_"):index + len("player_") + 1])
+                            player_colour = child.message
+                            index = player_colour.find("loss_")
+                            player_colour = player_colour[index + len("loss_"):]
+                            player_nr = get_player_index(player_colour)
 
                             # checkout the branch
-                            repo.git.checkout(f"loss_player_{player_nr}")
-
+                            repo.git.checkout(f"{parent}_loss_{player_colour}")
                             # get the player's hand and the changed bank
                             new_resources = get_player_hand(repo, "resource_cards", player_nr - 1)
 
@@ -152,9 +154,6 @@ def roll_dice(repo: git.Repo, hexagons: [HexagonTile]):
                             author,
                         )
 
-                        # delete references
-                        for i in range(_number_of_players):
-                            repo.delete_head(f"loss_player_{i + 1}", force=True)
                     else:
                         print("update failed in dice roll merge")
                         repo.git.reset("--hard", "HEAD")
@@ -175,17 +174,16 @@ def roll_dice(repo: git.Repo, hexagons: [HexagonTile]):
                 else:
                     current_branch = repo.active_branch.name
                     # checkout the branch
-                    repo.git.checkout("-b", f"loss_player_{local_player + 1}")
+                    repo.git.checkout("-b", f"{parent}_loss_{current_branch}")
 
                     # empty commit
                     repo.index.commit(
-                        f"roll_dice_player_{local_player + 1}_empty",
+                        f"loss_{current_branch}_empty",
                         [parent],
                         True,
                         author,
                         author,
                     )
-
                     repo.git.checkout(current_branch)
             else:
                 if active_player == local_player:
@@ -269,10 +267,12 @@ def loose_cards(repo: git.Repo, cards: int, resources: [int], local_player: int,
     """
     loss = floor(cards / 2)
     diff = randomly_choose_loss(loss, resources)
+    author_name = repo.active_branch.name
+    author = git.Actor(author_name, f"{author_name}@git.com")
 
     current_branch = repo.active_branch.name
     # checkout the branch
-    repo.git.checkout("-b", f"loss_player_{local_player + 1}")
+    repo.git.checkout("-b", f"{parent}_loss_{current_branch}")
 
     update = update_player_hand(repo, "resource_cards", local_player, diff)
     update = update and update_bank_resources(repo, negate_int_arr(diff))
@@ -289,10 +289,9 @@ def loose_cards(repo: git.Repo, cards: int, resources: [int], local_player: int,
             repo.index.add(file_path)
         repo.index.write_tree()
 
-        author_name = repo.active_branch.name
-        author = git.Actor(author_name, f"{author_name}@git.com")
+
         repo.index.commit(
-            f"roll_dice_player_{local_player + 1}_loss",
+            f"loss_{current_branch}",
             [parent],
             True,
             author,

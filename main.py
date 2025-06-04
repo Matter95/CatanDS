@@ -594,7 +594,7 @@ def compute_sync_time(path, number_of_sims: int):
 
 
 #
-#simulate(100)
+simulate(1)
 #sim(55, True)
 #path = os.path.join("E:", "Unibasel", "Master Thesis", "2_player_games")
 #path = os.path.join("E:", "Unibasel", "Master Thesis", "4_player_games")
@@ -604,10 +604,10 @@ def compute_sync_time(path, number_of_sims: int):
 #compute_sync_time(path, 100)
 
 
-for _ in range(0, 100):
-    repo = Repo(ROOT_DIR)
-    repo.git.reset("--hard", "HEAD~5")
-    t1 = time.time()
-    repo.remotes.origin.pull()
-    t2 = time.time()
-    print(t2 - t1)
+#for _ in range(0, 100):
+#    repo = Repo(ROOT_DIR)
+#    repo.git.reset("--hard", "HEAD~5")
+#    t1 = time.time()
+#    repo.remotes.origin.pull()
+#    t2 = time.time()
+#    print(t2 - t1)
