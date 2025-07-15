@@ -447,12 +447,21 @@ ResourceGainPlayer(p,d) ==
   IN
     SumResFunc([c \in (V \cup C) |-> IF c \in C THEN 2 ELSE 1])
 
+\* create a record with the max resource values of all player hands
+MaxPlayerResourceRecord == 
+  [res \in DOMAIN G.bnk.RC |-> 
+    CHOOSE r \in {G.h[p].RC[res]: p \in Players}: 
+      \A q \in Players : r # q /\ r >= G.h[q].RC[res]]
+
 \* gather all resource records with a sum between 4 and 7
-ResourceRecsWithSpecificSum == {rec \in [Lumber: 0..6, Brick: 0..6, Wool: 0..6, 
-  Grain: 0..6, Ore: 0..6]:
-    /\ SumFunc(IterateRec(rec)) >= 4 
-    /\ SumFunc(IterateRec(rec)) <= 7
-  }
+ResourceRecsWithSpecificSum == 
+  LET maxRes == MaxPlayerResourceRecord
+  IN
+    {rec \in [Lumber: 0..maxRes.Lumber, Brick: 0..maxRes.Brick, Wool: 0..maxRes.Wool, 
+      Grain: 0..maxRes.Grain, Ore: 0..maxRes.Ore]:
+      /\ SumFunc(IterateRec(rec)) >= 4 \/ SumFunc(IterateRec(rec)) = 0
+      /\ SumFunc(IterateRec(rec)) <= 7 \/ SumFunc(IterateRec(rec)) = 0
+    }
 
 --------
 
@@ -807,10 +816,10 @@ PlayKnight ==
 PlayDevCard == 
   /\ G.tp \in {Trading, Building}
   /\ \E dc \in DOMAIN G.h[G.ap].DC.AC: G.h[G.ap].DC.AC[dc] > 0 /\
-    IF dc = "Monopoly" THEN UNCHANGED<<G,SU>> \*PlayMonopoly
-    ELSE IF dc = "YearOfPlenty" THEN UNCHANGED<<G,SU>> \*PlayYearOfPlenty
-    ELSE IF dc = "RoadBuilding" THEN UNCHANGED<<G,SU>> \*PlayRoadBuilding
-    ELSE UNCHANGED<<G,SU>> \*PlayKnight
+    IF dc = "Monopoly" THEN PlayMonopoly \*PlayMonopoly
+    ELSE IF dc = "YearOfPlenty" THEN PlayYearOfPlenty \*PlayYearOfPlenty
+    ELSE IF dc = "RoadBuilding" THEN PlayRoadBuilding \*PlayRoadBuilding
+    ELSE PlayKnight \*PlayKnight
 
 --------
 

@@ -594,8 +594,8 @@ def compute_sync_time(path, number_of_sims: int):
 
 
 #
-simulate(1)
-#sim(55, True)
+#simulate(1)
+sim(2, True)
 #path = os.path.join("E:", "Unibasel", "Master Thesis", "2_player_games")
 #path = os.path.join("E:", "Unibasel", "Master Thesis", "4_player_games")
 #path = os.path.join(ROOT_DIR)

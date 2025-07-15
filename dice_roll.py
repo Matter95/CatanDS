@@ -83,18 +83,18 @@ def roll_dice(repo: git.Repo, hexagons: [HexagonTile]):
 
                             # checkout the branch
                             repo.git.checkout(f"{parent}_loss_{player_colour}")
-                            # get the player's hand and the changed bank
-                            new_resources = get_player_hand(repo, "resource_cards", player_nr - 1)
+                            # get the player's hand
+                            new_resources = get_player_hand(repo, "resource_cards", player_nr)
 
                             # add player hand to changed files
-                            files.append(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{player_nr}"))
+                            files.append(os.path.join(repo.working_dir, "state", "game", "player_hands", f"player_{player_nr + 1}"))
 
                             # return to active player branch
                             repo.git.checkout(current_branch)
 
-                            old_resources = get_player_hand(repo, "resource_cards", player_nr - 1)
+                            old_resources = get_player_hand(repo, "resource_cards", player_nr)
 
-                            diffs.append((player_nr - 1, get_diff_between_arrays(new_resources, old_resources)))
+                            diffs.append((player_nr, get_diff_between_arrays(new_resources, old_resources)))
 
                     bank_diff = [0,0,0,0,0]
 

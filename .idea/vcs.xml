@@ -2,10 +2,7 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/Catan_0" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/Catan_1" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/Catan_2" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/Catan_3" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/Catan_4" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Tests/Catan_Test" vcs="Git" />
   </component>
 </project>
